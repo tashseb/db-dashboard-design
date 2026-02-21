@@ -6,6 +6,7 @@ import { DatabaseSidebar } from "@/components/database-sidebar"
 import { SchemaPanel } from "@/components/schema-panel"
 import { TableDetail } from "@/components/table-detail"
 import { StoredProcedureDetail } from "@/components/stored-procedure-detail"
+import { ProcessDetail } from "@/components/process-detail"
 import { databases } from "@/lib/data"
 
 export default function Page() {
@@ -13,6 +14,7 @@ export default function Page() {
   const [selectedDatabase, setSelectedDatabase] = useState(databases[0].name)
   const [selectedTable, setSelectedTable] = useState("users")
   const [selectedProcedure, setSelectedProcedure] = useState("get_user_by_email")
+  const [selectedProcess, setSelectedProcess] = useState("User Management Dashboard")
   const [selectedSchema, setSelectedSchema] = useState("public")
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -40,6 +42,16 @@ export default function Page() {
     )
   }, [currentDatabase, selectedSchema, selectedProcedure])
 
+  const currentProcess = useMemo(() => {
+    if (!currentDatabase) return null
+    const schema = currentDatabase.schemas.find(
+      (s) => s.name === selectedSchema,
+    )
+    return (
+      schema?.processes.find((p) => p.name === selectedProcess) ?? null
+    )
+  }, [currentDatabase, selectedSchema, selectedProcess])
+
   const handleSelectDatabase = useCallback(
     (name: string) => {
       setSelectedDatabase(name)
@@ -52,6 +64,9 @@ export default function Page() {
         }
         if (schema.storedProcedures.length > 0) {
           setSelectedProcedure(schema.storedProcedures[0].name)
+        }
+        if (schema.processes.length > 0) {
+          setSelectedProcess(schema.processes[0].name)
         }
       }
     },
@@ -70,6 +85,8 @@ export default function Page() {
         setSelectedProcedure(schema.storedProcedures[0].name)
       } else if (tab === "table" && schema.tables.length > 0) {
         setSelectedTable(schema.tables[0].name)
+      } else if (tab === "process" && schema.processes.length > 0) {
+        setSelectedProcess(schema.processes[0].name)
       }
     },
     [currentDatabase, selectedSchema],
@@ -80,6 +97,8 @@ export default function Page() {
       setSelectedSchema(schemaName)
       if (activeTab === "stored-procedures") {
         setSelectedProcedure(itemName)
+      } else if (activeTab === "process") {
+        setSelectedProcess(itemName)
       } else {
         setSelectedTable(itemName)
       }
@@ -88,7 +107,11 @@ export default function Page() {
   )
 
   const selectedItem =
-    activeTab === "stored-procedures" ? selectedProcedure : selectedTable
+    activeTab === "stored-procedures"
+      ? selectedProcedure
+      : activeTab === "process"
+        ? selectedProcess
+        : selectedTable
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -120,6 +143,14 @@ export default function Page() {
           currentDatabase && (
             <StoredProcedureDetail
               procedure={currentProcedure}
+              databaseName={currentDatabase.name}
+            />
+          )}
+        {activeTab === "process" &&
+          currentProcess &&
+          currentDatabase && (
+            <ProcessDetail
+              process={currentProcess}
               databaseName={currentDatabase.name}
             />
           )}

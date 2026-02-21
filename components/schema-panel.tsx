@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Folder, Table2, Zap } from "lucide-react"
+import { ChevronDown, ChevronRight, Folder, Table2, Zap, Workflow } from "lucide-react"
 import { useState } from "react"
 import type { SchemaInfo } from "@/lib/data"
 
@@ -29,7 +29,12 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
   }
 
   const isStoredProcedures = activeTab === "stored-procedures"
-  const panelTitle = isStoredProcedures ? "Schemas & Procedures" : "Schemas & Tables"
+  const isProcess = activeTab === "process"
+  const panelTitle = isProcess
+    ? "Schemas & Processes"
+    : isStoredProcedures
+      ? "Schemas & Procedures"
+      : "Schemas & Tables"
 
   return (
     <div className="flex w-[240px] min-w-[240px] flex-col border-r border-border bg-background">
@@ -41,7 +46,11 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
       <div className="flex-1 overflow-y-auto px-2">
         {schemas.map((schema) => {
           const isExpanded = expandedSchemas.has(schema.name)
-          const items = isStoredProcedures ? schema.storedProcedures : schema.tables
+          const items = isProcess
+            ? schema.processes
+            : isStoredProcedures
+              ? schema.storedProcedures
+              : schema.tables
           return (
             <div key={schema.name}>
               <button
@@ -64,7 +73,7 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
                 <div className="ml-4">
                   {items.map((item) => {
                     const isSelected = selectedItem === item.name
-                    const Icon = isStoredProcedures ? Zap : Table2
+                    const Icon = isProcess ? Workflow : isStoredProcedures ? Zap : Table2
                     return (
                       <button
                         key={item.name}
