@@ -1,10 +1,11 @@
 "use client"
 
-import { Database, FileText, FolderCog as FolderCode } from "lucide-react"
+import { Database, FileText, FolderCog as FolderCode, Workflow } from "lucide-react"
 
 const tabs = [
   { label: "Table", icon: Database, id: "table" },
   { label: "Stored Procedures", icon: FolderCode, id: "stored-procedures" },
+  { label: "Process", icon: Workflow, id: "process" },
   { label: "Documents", icon: FileText, id: "documents" },
 ] as const
 
