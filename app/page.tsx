@@ -17,6 +17,8 @@ export default function Page() {
   const [selectedProcess, setSelectedProcess] = useState("User Management Dashboard")
   const [selectedSchema, setSelectedSchema] = useState("public")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [schemaOpen, setSchemaOpen] = useState(true)
 
   const currentDatabase = useMemo(
     () => databases.find((db) => db.name === selectedDatabase),
@@ -115,7 +117,14 @@ export default function Page() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <TopNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <TopNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        schemaOpen={schemaOpen}
+        onToggleSchema={() => setSchemaOpen((v) => !v)}
+      />
       <div className="flex flex-1 overflow-hidden">
         <DatabaseSidebar
           databases={databases}
@@ -123,6 +132,7 @@ export default function Page() {
           onSelectDatabase={handleSelectDatabase}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          collapsed={!sidebarOpen}
         />
         {currentDatabase && (
           <SchemaPanel
@@ -130,6 +140,7 @@ export default function Page() {
             selectedItem={selectedItem}
             activeTab={activeTab}
             onSelectItem={handleSelectItem}
+            collapsed={!schemaOpen}
           />
         )}
         {activeTab === "table" && currentTable && currentDatabase && (

@@ -9,6 +9,7 @@ interface DatabaseSidebarProps {
   onSelectDatabase: (name: string) => void
   searchQuery: string
   onSearchChange: (query: string) => void
+  collapsed: boolean
 }
 
 export function DatabaseSidebar({
@@ -17,13 +18,16 @@ export function DatabaseSidebar({
   onSelectDatabase,
   searchQuery,
   onSearchChange,
+  collapsed,
 }: DatabaseSidebarProps) {
   const filtered = databases.filter((db) =>
     db.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  if (collapsed) return null
+
   return (
-    <aside className="flex w-[280px] min-w-[280px] flex-col border-r border-border bg-muted/30">
+    <aside className="flex w-[220px] min-w-[220px] flex-col border-r border-border bg-muted/30 xl:w-[280px] xl:min-w-[280px]">
       <div className="flex items-center justify-between px-5 py-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Databases

@@ -9,9 +9,10 @@ interface SchemaPanelProps {
   selectedItem: string
   activeTab: string
   onSelectItem: (schemaName: string, itemName: string) => void
+  collapsed: boolean
 }
 
-export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: SchemaPanelProps) {
+export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem, collapsed }: SchemaPanelProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(
     new Set(schemas.map((s) => s.name))
   )
@@ -36,8 +37,10 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
       ? "Schemas & Procedures"
       : "Schemas & Tables"
 
+  if (collapsed) return null
+
   return (
-    <div className="flex w-[240px] min-w-[240px] flex-col border-r border-border bg-background">
+    <div className="flex w-[200px] min-w-[200px] flex-col border-r border-border bg-background xl:w-[240px] xl:min-w-[240px]">
       <div className="px-5 py-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {panelTitle}

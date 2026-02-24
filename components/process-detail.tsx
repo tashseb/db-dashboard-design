@@ -68,22 +68,24 @@ function IssueRow({ issue }: { issue: IssueRecord }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/20"
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/20 sm:items-center"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />
         )}
-        <span className="w-20 shrink-0 text-xs font-mono text-muted-foreground">
-          {issue.id}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {issue.title}
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          <SeverityBadge severity={issue.severity} />
-          <StatusBadge status={issue.status} />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <span className="shrink-0 text-xs font-mono text-muted-foreground sm:w-20">
+            {issue.id}
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-medium text-foreground sm:truncate">
+            {issue.title}
+          </span>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <SeverityBadge severity={issue.severity} />
+            <StatusBadge status={issue.status} />
+          </div>
         </div>
       </button>
       {expanded && (
@@ -129,30 +131,30 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       {/* Header */}
-      <div className="border-b border-border px-8 py-5">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="border-b border-border px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Database className="h-4 w-4" />
-              <span>{databaseName}</span>
+              <Database className="h-4 w-4 shrink-0" />
+              <span className="truncate">{databaseName}</span>
               <span className="text-muted-foreground/50">/</span>
-              <span className="font-medium text-primary">{process.name}</span>
+              <span className="truncate font-medium text-primary">{process.name}</span>
             </div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="truncate text-xl font-bold text-foreground sm:text-2xl">
               {process.name}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-lg border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="flex items-center gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
             >
               <RotateCcw className="h-4 w-4" />
               Reset
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
             >
               <Save className="h-4 w-4" />
               Save Changes
@@ -162,12 +164,12 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
       </div>
 
       {/* General Information */}
-      <div className="px-8 py-6">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
           General Information
         </h2>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">
               Page Name
@@ -215,7 +217,7 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
       </div>
 
       {/* Data Population */}
-      <div className="px-8 pb-6">
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
           Data Population
         </h2>
@@ -234,8 +236,8 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
         <label className="mb-3 block text-sm font-medium text-foreground">
           Databases & Tables Used
         </label>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
@@ -275,7 +277,7 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
       </div>
 
       {/* Main Users */}
-      <div className="px-8 pb-6">
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
           Main Users
         </h2>
@@ -295,7 +297,7 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
       </div>
 
       {/* Issue Tracking */}
-      <div className="px-8 pb-8">
+      <div className="px-4 pb-8 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-primary">
             Issue Tracking
@@ -314,7 +316,7 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
 
         {process.issues.length > 0 ? (
           <div className="overflow-hidden rounded-lg border border-border">
-            <div className="flex items-center gap-4 border-b border-border bg-muted/40 px-4 py-2.5">
+            <div className="hidden items-center gap-4 border-b border-border bg-muted/40 px-4 py-2.5 sm:flex">
               <span className="w-20 text-xs font-medium text-muted-foreground">
                 ID
               </span>
