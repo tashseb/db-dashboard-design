@@ -178,6 +178,7 @@ export default function Page() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           collapsed={!sidebarOpen}
+          onToggle={() => setSidebarOpen((v) => !v)}
         />
         {currentDatabase && (
           <SchemaPanel
@@ -186,6 +187,7 @@ export default function Page() {
             activeTab={activeTab}
             onSelectItem={handleSelectItem}
             collapsed={!schemaOpen}
+            onToggle={() => setSchemaOpen((v) => !v)}
             onCreateProcess={() => setCreateModalOpen(true)}
           />
         )}
