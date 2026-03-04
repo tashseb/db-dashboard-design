@@ -8,6 +8,7 @@ import { TableDetail } from "@/components/table-detail"
 import { StoredProcedureDetail } from "@/components/stored-procedure-detail"
 import { ProcessDetail } from "@/components/process-detail"
 import { CreateProcessModal } from "@/components/create-process-modal"
+import type { CreateProcessData } from "@/components/create-process-modal"
 import { databases as initialDatabases } from "@/lib/data"
 import type { ProcessInfo } from "@/lib/data"
 
@@ -113,7 +114,7 @@ export default function Page() {
   )
 
   const handleCreateProcess = useCallback(
-    (data: { name: string; category: string; description: string; trigger: string; contact: string }) => {
+    (data: CreateProcessData) => {
       const newProcess: ProcessInfo = {
         name: data.name,
         category: data.category,
@@ -128,9 +129,9 @@ export default function Page() {
           minute: "2-digit",
         }),
         updatedBy: "You",
-        dataPopulation: "",
-        databasesUsed: [],
-        documents: [],
+        dataPopulation: data.dataPopulation,
+        databasesUsed: data.databasesUsed,
+        documents: data.documents,
         issues: [],
       }
       setDatabases((prev) =>
@@ -188,7 +189,6 @@ export default function Page() {
             onSelectItem={handleSelectItem}
             collapsed={!schemaOpen}
             onToggle={() => setSchemaOpen((v) => !v)}
-            onCreateProcess={() => setCreateModalOpen(true)}
           />
         )}
         {activeTab === "table" && currentTable && currentDatabase && (
@@ -211,6 +211,7 @@ export default function Page() {
             <ProcessDetail
               process={currentProcess}
               databaseName={currentDatabase.name}
+              onCreateProcess={() => setCreateModalOpen(true)}
             />
           )}
       </div>

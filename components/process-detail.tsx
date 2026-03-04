@@ -10,6 +10,7 @@ import {
   Database,
   FileText,
   Info,
+  Plus,
   RotateCcw,
   Save,
   Search,
@@ -25,6 +26,7 @@ import type { ProcessInfo, IssueRecord, DocumentFile } from "@/lib/data"
 interface ProcessDetailProps {
   process: ProcessInfo
   databaseName: string
+  onCreateProcess?: () => void
 }
 
 // --- Sub-components ---
@@ -279,7 +281,7 @@ function DocumentDropZone({
 
 // --- Main component ---
 
-export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
+export function ProcessDetail({ process, databaseName, onCreateProcess }: ProcessDetailProps) {
   const openCount = process.issues.filter(
     (i) => i.status !== "resolved",
   ).length
@@ -305,20 +307,30 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
               {process.name}
             </h1>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {onCreateProcess && (
+              <button
+                type="button"
+                onClick={onCreateProcess}
+                className="flex items-center gap-2 rounded-lg border border-primary/30 bg-transparent px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5 sm:px-4"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Create</span>
+              </button>
+            )}
             <button
               type="button"
               className="flex items-center gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
             >
               <RotateCcw className="h-4 w-4" />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
             <button
               type="button"
               className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
             >
               <Save className="h-4 w-4" />
-              Save Changes
+              <span className="hidden sm:inline">Save Changes</span>
             </button>
           </div>
         </div>
