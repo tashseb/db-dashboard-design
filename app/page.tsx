@@ -7,11 +7,13 @@ import { SchemaPanel } from "@/components/schema-panel"
 import { TableDetail } from "@/components/table-detail"
 import { StoredProcedureDetail } from "@/components/stored-procedure-detail"
 import { ProcessDetail } from "@/components/process-detail"
-import { databases } from "@/lib/data"
+import { CreateProcessModal } from "@/components/create-process-modal"
+import { databases as initialDatabases } from "@/lib/data"
+import type { ProcessInfo } from "@/lib/data"
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState("table")
-  const [selectedDatabase, setSelectedDatabase] = useState(databases[0].name)
+  const [selectedDatabase, setSelectedDatabase] = useState(initialDatabases[0].name)
   const [selectedTable, setSelectedTable] = useState("users")
   const [selectedProcedure, setSelectedProcedure] = useState("get_user_by_email")
   const [selectedProcess, setSelectedProcess] = useState("User Management Dashboard")
@@ -19,10 +21,12 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [schemaOpen, setSchemaOpen] = useState(true)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [databases, setDatabases] = useState(initialDatabases)
 
   const currentDatabase = useMemo(
     () => databases.find((db) => db.name === selectedDatabase),
-    [selectedDatabase],
+    [databases, selectedDatabase],
   )
 
   const currentTable = useMemo(() => {
@@ -72,7 +76,7 @@ export default function Page() {
         }
       }
     },
-    [],
+    [databases],
   )
 
   const handleTabChange = useCallback(
@@ -108,6 +112,47 @@ export default function Page() {
     [activeTab],
   )
 
+  const handleCreateProcess = useCallback(
+    (data: { name: string; category: string; description: string; trigger: string; contact: string }) => {
+      const newProcess: ProcessInfo = {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        trigger: data.trigger,
+        contact: data.contact,
+        lastUpdated: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        updatedBy: "You",
+        dataPopulation: "",
+        databasesUsed: [],
+        documents: [],
+        issues: [],
+      }
+      setDatabases((prev) =>
+        prev.map((db) =>
+          db.name === selectedDatabase
+            ? {
+                ...db,
+                schemas: db.schemas.map((s) =>
+                  s.name === selectedSchema
+                    ? { ...s, processes: [...s.processes, newProcess] }
+                    : s,
+                ),
+              }
+            : db,
+        ),
+      )
+      setSelectedProcess(data.name)
+      setCreateModalOpen(false)
+    },
+    [selectedDatabase, selectedSchema],
+  )
+
   const selectedItem =
     activeTab === "stored-procedures"
       ? selectedProcedure
@@ -141,6 +186,7 @@ export default function Page() {
             activeTab={activeTab}
             onSelectItem={handleSelectItem}
             collapsed={!schemaOpen}
+            onCreateProcess={() => setCreateModalOpen(true)}
           />
         )}
         {activeTab === "table" && currentTable && currentDatabase && (
@@ -166,6 +212,11 @@ export default function Page() {
             />
           )}
       </div>
+      <CreateProcessModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleCreateProcess}
+      />
     </div>
   )
 }

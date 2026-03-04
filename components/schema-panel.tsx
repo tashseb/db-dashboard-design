@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Folder, Table2, Zap, Workflow } from "lucide-react"
+import { ChevronDown, ChevronRight, Folder, Plus, Table2, Zap, Workflow } from "lucide-react"
 import { useState } from "react"
 import type { SchemaInfo } from "@/lib/data"
 
@@ -10,9 +10,10 @@ interface SchemaPanelProps {
   activeTab: string
   onSelectItem: (schemaName: string, itemName: string) => void
   collapsed: boolean
+  onCreateProcess?: () => void
 }
 
-export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem, collapsed }: SchemaPanelProps) {
+export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem, collapsed, onCreateProcess }: SchemaPanelProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(
     new Set(schemas.map((s) => s.name))
   )
@@ -41,10 +42,20 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem, co
 
   return (
     <div className="flex w-[200px] min-w-[200px] flex-col border-r border-border bg-background xl:w-[240px] xl:min-w-[240px]">
-      <div className="px-5 py-4">
+      <div className="flex items-center justify-between px-5 py-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {panelTitle}
         </h2>
+        {isProcess && onCreateProcess && (
+          <button
+            type="button"
+            onClick={onCreateProcess}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+            aria-label="Create new process"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto px-2">
         {schemas.map((schema) => {
