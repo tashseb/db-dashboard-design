@@ -6,23 +6,30 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Clock,
   Database,
-  Eye,
+  FileText,
   Info,
-  LayoutDashboard,
+  Plus,
   RotateCcw,
   Save,
   Search,
   Shield,
-  Users,
+  Trash2,
+  UploadCloud,
+  User,
+  X,
 } from "lucide-react"
-import { useState } from "react"
-import type { ProcessInfo, IssueRecord } from "@/lib/data"
+import { useState, useRef, useCallback } from "react"
+import type { ProcessInfo, IssueRecord, DocumentFile } from "@/lib/data"
 
 interface ProcessDetailProps {
   process: ProcessInfo
   databaseName: string
+  onCreateProcess?: () => void
 }
+
+// --- Sub-components ---
 
 function SeverityBadge({ severity }: { severity: IssueRecord["severity"] }) {
   const styles = {
@@ -68,22 +75,24 @@ function IssueRow({ issue }: { issue: IssueRecord }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/20"
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/20 sm:items-center"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />
         )}
-        <span className="w-20 shrink-0 text-xs font-mono text-muted-foreground">
-          {issue.id}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {issue.title}
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          <SeverityBadge severity={issue.severity} />
-          <StatusBadge status={issue.status} />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <span className="shrink-0 text-xs font-mono text-muted-foreground sm:w-20">
+            {issue.id}
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-medium text-foreground sm:truncate">
+            {issue.title}
+          </span>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <SeverityBadge severity={issue.severity} />
+            <StatusBadge status={issue.status} />
+          </div>
         </div>
       </button>
       {expanded && (
@@ -120,8 +129,162 @@ function IssueRow({ issue }: { issue: IssueRecord }) {
   )
 }
 
-export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
-  const openCount = process.issues.filter((i) => i.status !== "resolved").length
+function ReadOnlyField({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  icon: React.ElementType
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-muted-foreground">
+        {label}
+      </label>
+      <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm text-foreground">{value}</span>
+      </div>
+    </div>
+  )
+}
+
+function DocumentDropZone({
+  documents: initialDocs,
+}: {
+  documents: DocumentFile[]
+}) {
+  const [docs, setDocs] = useState<DocumentFile[]>(initialDocs)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files) return
+    const newDocs: DocumentFile[] = Array.from(files).map((f, i) => ({
+      id: `new-${Date.now()}-${i}`,
+      name: f.name,
+      size: f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`,
+      uploadedAt: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+      uploadedBy: "You",
+    }))
+    setDocs((prev) => [...prev, ...newDocs])
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragging(false)
+      handleFiles(e.dataTransfer.files)
+    },
+    [handleFiles],
+  )
+
+  const removeDoc = (id: string) => {
+    setDocs((prev) => prev.filter((d) => d.id !== id))
+  }
+
+  if (docs.length === 0) {
+    return (
+      <>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setIsDragging(true)
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={`flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 transition-colors ${
+            isDragging
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-muted-foreground/40 hover:bg-muted/20"
+          }`}
+        >
+          <UploadCloud className={`mb-3 h-10 w-10 ${isDragging ? "text-primary" : "text-muted-foreground/40"}`} />
+          <p className="text-sm font-medium text-foreground">
+            Drop files here or click to upload
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            PDF, DOC, MD, FIG, or any file type
+          </p>
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        className={`rounded-lg border transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-border"}`}
+      >
+        <div className="divide-y divide-border">
+          {docs.map((doc) => (
+            <div
+              key={doc.id}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/20"
+            >
+              <FileText className="h-5 w-5 shrink-0 text-primary/70" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {doc.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {doc.size} &middot; {doc.uploadedBy} &middot; {doc.uploadedAt}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeDoc(doc.id)}
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Remove ${doc.name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 border-t border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground"
+        >
+          <UploadCloud className="h-4 w-4" />
+          Add more files
+        </button>
+      </div>
+    </>
+  )
+}
+
+// --- Main component ---
+
+export function ProcessDetail({ process, databaseName, onCreateProcess }: ProcessDetailProps) {
+  const openCount = process.issues.filter(
+    (i) => i.status !== "resolved",
+  ).length
   const resolvedCount = process.issues.filter(
     (i) => i.status === "resolved",
   ).length
@@ -129,65 +292,92 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       {/* Header */}
-      <div className="border-b border-border px-8 py-5">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="border-b border-border px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Database className="h-4 w-4" />
-              <span>{databaseName}</span>
+              <Database className="h-4 w-4 shrink-0" />
+              <span className="truncate">{databaseName}</span>
               <span className="text-muted-foreground/50">/</span>
-              <span className="font-medium text-primary">{process.name}</span>
+              <span className="truncate font-medium text-primary">
+                {process.name}
+              </span>
             </div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="truncate text-xl font-bold text-foreground sm:text-2xl">
               {process.name}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {onCreateProcess && (
+              <button
+                type="button"
+                onClick={onCreateProcess}
+                className="flex items-center gap-2 rounded-lg border border-primary/30 bg-transparent px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5 sm:px-4"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Create</span>
+              </button>
+            )}
             <button
               type="button"
-              className="flex items-center gap-2 rounded-lg border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="flex items-center gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
             >
               <RotateCcw className="h-4 w-4" />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
             >
               <Save className="h-4 w-4" />
-              Save Changes
+              <span className="hidden sm:inline">Save Changes</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* General Information */}
-      <div className="px-8 py-6">
+      {/* Read-only meta */}
+      <div className="border-b border-border px-4 py-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ReadOnlyField
+            label="Last Updated"
+            value={process.lastUpdated}
+            icon={Clock}
+          />
+          <ReadOnlyField
+            label="Updated By"
+            value={process.updatedBy}
+            icon={User}
+          />
+        </div>
+      </div>
+
+      {/* Editable fields */}
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
           General Information
         </h2>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">
-              Page Name
+              Name
             </label>
             <input
               type="text"
               defaultValue={process.name}
-              className="w-full rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">
-              Page Path
+              Category
             </label>
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
-              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-mono text-foreground">
-                {process.pagePath}
-              </span>
-            </div>
+            <input
+              type="text"
+              defaultValue={process.category}
+              className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
           </div>
         </div>
 
@@ -198,26 +388,37 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
           <textarea
             defaultValue={process.description}
             rows={3}
-            className="w-full resize-none rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full resize-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm leading-relaxed text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
         <div className="mt-6">
           <label className="mb-2 block text-sm font-medium text-foreground">
-            Main Functionality
+            Trigger
           </label>
           <textarea
-            defaultValue={process.mainFunctionality}
-            rows={4}
-            className="w-full resize-none rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            defaultValue={process.trigger}
+            rows={2}
+            className="w-full resize-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm leading-relaxed text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        <div className="mt-6">
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            Contact
+          </label>
+          <input
+            type="text"
+            defaultValue={process.contact}
+            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
       </div>
 
-      {/* Data Population */}
-      <div className="px-8 pb-6">
+      {/* Database section */}
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
-          Data Population
+          Database
         </h2>
 
         <div className="mb-6">
@@ -227,15 +428,15 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
           <textarea
             defaultValue={process.dataPopulation}
             rows={4}
-            className="w-full resize-none rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full resize-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm leading-relaxed text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
         <label className="mb-3 block text-sm font-medium text-foreground">
           Databases & Tables Used
         </label>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
@@ -274,28 +475,16 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
         </div>
       </div>
 
-      {/* Main Users */}
-      <div className="px-8 pb-6">
+      {/* Documentation */}
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-primary">
-          Main Users
+          Documentation
         </h2>
-        <div className="flex flex-wrap gap-2">
-          {process.mainUsers.map((user) => (
-            <div
-              key={user}
-              className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5"
-            >
-              <Users className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                {user}
-              </span>
-            </div>
-          ))}
-        </div>
+        <DocumentDropZone documents={process.documents} />
       </div>
 
       {/* Issue Tracking */}
-      <div className="px-8 pb-8">
+      <div className="px-4 pb-8 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-primary">
             Issue Tracking
@@ -314,7 +503,7 @@ export function ProcessDetail({ process, databaseName }: ProcessDetailProps) {
 
         {process.issues.length > 0 ? (
           <div className="overflow-hidden rounded-lg border border-border">
-            <div className="flex items-center gap-4 border-b border-border bg-muted/40 px-4 py-2.5">
+            <div className="hidden items-center gap-4 border-b border-border bg-muted/40 px-4 py-2.5 sm:flex">
               <span className="w-20 text-xs font-medium text-muted-foreground">
                 ID
               </span>

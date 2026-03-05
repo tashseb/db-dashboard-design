@@ -47,14 +47,25 @@ export interface DatabaseReference {
   usage: string
 }
 
+export interface DocumentFile {
+  id: string
+  name: string
+  size: string
+  uploadedAt: string
+  uploadedBy: string
+}
+
 export interface ProcessInfo {
   name: string
-  pagePath: string
+  category: string
   description: string
-  mainFunctionality: string
+  trigger: string
+  contact: string
+  lastUpdated: string
+  updatedBy: string
   dataPopulation: string
   databasesUsed: DatabaseReference[]
-  mainUsers: string[]
+  documents: DocumentFile[]
   issues: IssueRecord[]
 }
 
@@ -184,15 +195,22 @@ END;`,
         processes: [
           {
             name: "User Management Dashboard",
-            pagePath: "/admin/users",
+            category: "Admin",
             description: "Administrative dashboard for viewing, searching, and managing user accounts across the platform. Provides bulk operations and individual user editing.",
-            mainFunctionality: "Displays a paginated table of all users with search, filter, and sort capabilities. Admins can activate/deactivate accounts, reset passwords, edit user profiles, and export user data. Includes real-time user count metrics and activity graphs.",
+            trigger: "Manual navigation via admin sidebar; auto-redirect after login for admin-role users",
+            contact: "platform-team@company.com",
+            lastUpdated: "October 25, 2023 at 11:30 PM",
+            updatedBy: "Sarah Chen",
             dataPopulation: "Initial page load fetches the first 50 users via the get_user_by_email stored procedure with pagination parameters. Search triggers a debounced API call to /api/users/search which queries the users table with ILIKE filters. User metrics are aggregated via a materialized view refreshed every 15 minutes.",
             databasesUsed: [
               { database: "Production_Main", table: "users", usage: "Primary read/write for all user CRUD operations" },
               { database: "Production_Main", table: "orders", usage: "Read-only join to display order count per user" },
             ],
-            mainUsers: ["System Administrators", "Support Team Leads", "Compliance Officers"],
+            documents: [
+              { id: "doc-1", name: "User Management - Technical Spec.pdf", size: "2.4 MB", uploadedAt: "October 10, 2023", uploadedBy: "Sarah Chen" },
+              { id: "doc-2", name: "Admin Dashboard Wireframes.fig", size: "8.1 MB", uploadedAt: "September 28, 2023", uploadedBy: "Alex Rivera" },
+              { id: "doc-3", name: "User CRUD API Documentation.md", size: "48 KB", uploadedAt: "October 15, 2023", uploadedBy: "James Park" },
+            ],
             issues: [
               {
                 id: "ISS-001",
@@ -226,15 +244,18 @@ END;`,
           },
           {
             name: "Order History Page",
-            pagePath: "/account/orders",
+            category: "Customer",
             description: "Customer-facing page that displays a user's complete order history with status tracking, filtering by date range, and order detail drill-down.",
-            mainFunctionality: "Shows a chronological list of orders for the authenticated user. Each order row displays the order ID, total amount, status badge, and creation date. Users can click into an order to see line items, shipping info, and payment details. Includes date range filtering and status filtering.",
+            trigger: "Navigated from account menu; deep-link from order confirmation email",
+            contact: "commerce-team@company.com",
+            lastUpdated: "October 26, 2023 at 3:15 AM",
+            updatedBy: "Mike Torres",
             dataPopulation: "On page load, the authenticated user's ID is extracted from the session token. Orders are fetched via /api/orders?user_id={id} which runs a SELECT on the orders table with user_id filter, ordered by created_at DESC. Order details are lazy-loaded on expand via a separate API call joining orders with order_items.",
             databasesUsed: [
               { database: "Production_Main", table: "orders", usage: "Primary read for order listing and filtering" },
               { database: "Production_Main", table: "users", usage: "Read to validate user session and display user info in header" },
             ],
-            mainUsers: ["Registered Customers", "Customer Support Agents"],
+            documents: [],
             issues: [
               {
                 id: "ISS-004",
@@ -308,14 +329,19 @@ END;`,
         processes: [
           {
             name: "Staging Test Runner",
-            pagePath: "/staging/test-runner",
+            category: "Internal Tools",
             description: "Internal tool used by QA engineers to execute automated test suites against the staging database and verify data integrity after resets.",
-            mainFunctionality: "Provides a UI to trigger the reset_staging_data procedure, run predefined test suites, and view pass/fail results in real time. Includes a log viewer for detailed test output and a history panel showing previous test runs.",
+            trigger: "Triggered manually from the QA dashboard or automatically on staging deploy via CI/CD webhook",
+            contact: "qa-team@company.com",
+            lastUpdated: "October 19, 2023 at 11:00 AM",
+            updatedBy: "Lisa Wang",
             dataPopulation: "Test configuration is loaded from a static JSON config on page mount. After a reset is triggered via the reset_staging_data procedure, test results are streamed via Server-Sent Events from /api/staging/test-stream. Historical runs are fetched from a test_runs table on initial load.",
             databasesUsed: [
               { database: "Staging_Replica", table: "users", usage: "Read/write target for data integrity tests after reset" },
             ],
-            mainUsers: ["QA Engineers", "DevOps Team"],
+            documents: [
+              { id: "doc-4", name: "QA Test Plan - Staging.pdf", size: "1.2 MB", uploadedAt: "October 12, 2023", uploadedBy: "Lisa Wang" },
+            ],
             issues: [
               {
                 id: "ISS-006",

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, Folder, Table2, Zap, Workflow } from "lucide-react"
+import { ChevronDown, ChevronRight, ChevronsRight, Folder, Table2, Zap, Workflow } from "lucide-react"
 import { useState } from "react"
 import type { SchemaInfo } from "@/lib/data"
 
@@ -9,11 +9,20 @@ interface SchemaPanelProps {
   selectedItem: string
   activeTab: string
   onSelectItem: (schemaName: string, itemName: string) => void
+  collapsed: boolean
+  onToggle: () => void
 }
 
-export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: SchemaPanelProps) {
+export function SchemaPanel({
+  schemas,
+  selectedItem,
+  activeTab,
+  onSelectItem,
+  collapsed,
+  onToggle,
+}: SchemaPanelProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(
-    new Set(schemas.map((s) => s.name))
+    new Set(schemas.map((s) => s.name)),
   )
 
   const toggleSchema = (name: string) => {
@@ -36,8 +45,56 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
       ? "Schemas & Procedures"
       : "Schemas & Tables"
 
+  const ItemIcon = isProcess ? Workflow : isStoredProcedures ? Zap : Table2
+
+  if (collapsed) {
+    return (
+      <div className="flex w-11 min-w-11 flex-col items-center border-r border-border bg-background">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="group flex w-full flex-col items-center gap-3 px-1 py-4 transition-colors hover:bg-muted"
+          aria-label="Expand schema panel"
+        >
+          <ChevronsRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+          <span className="writing-vertical text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
+            Schemas
+          </span>
+        </button>
+        <div className="mt-2 flex flex-1 flex-col items-center gap-1 px-1">
+          {schemas.flatMap((schema) => {
+            const items = isProcess
+              ? schema.processes
+              : isStoredProcedures
+                ? schema.storedProcedures
+                : schema.tables
+            return items.map((item) => {
+              const isSelected = selectedItem === item.name
+              return (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => onSelectItem(schema.name, item.name)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                    isSelected
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  title={item.name}
+                  aria-label={item.name}
+                >
+                  <ItemIcon className="h-4 w-4" />
+                </button>
+              )
+            })
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex w-[240px] min-w-[240px] flex-col border-r border-border bg-background">
+    <div className="flex w-[200px] min-w-[200px] flex-col border-r border-border bg-background xl:w-[240px] xl:min-w-[240px]">
       <div className="px-5 py-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {panelTitle}
@@ -73,7 +130,6 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
                 <div className="ml-4">
                   {items.map((item) => {
                     const isSelected = selectedItem === item.name
-                    const Icon = isProcess ? Workflow : isStoredProcedures ? Zap : Table2
                     return (
                       <button
                         key={item.name}
@@ -85,7 +141,7 @@ export function SchemaPanel({ schemas, selectedItem, activeTab, onSelectItem }: 
                             : "text-foreground hover:bg-muted"
                         }`}
                       >
-                        <Icon className={`h-4 w-4 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                        <ItemIcon className={`h-4 w-4 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                         <span className="truncate">{item.name}</span>
                       </button>
                     )

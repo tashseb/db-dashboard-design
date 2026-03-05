@@ -4,27 +4,37 @@ import { useState, useMemo, useCallback } from "react"
 import { TopNav } from "@/components/top-nav"
 import { DatabaseSidebar } from "@/components/database-sidebar"
 import { SchemaPanel } from "@/components/schema-panel"
+import { ProcessSidebar } from "@/components/process-sidebar"
 import { TableDetail } from "@/components/table-detail"
 import { StoredProcedureDetail } from "@/components/stored-procedure-detail"
 import { ProcessDetail } from "@/components/process-detail"
-import { databases } from "@/lib/data"
+import { EmptyState } from "@/components/empty-state"
+import { CreateProcessModal } from "@/components/create-process-modal"
+import type { CreateProcessData } from "@/components/create-process-modal"
+import { databases as initialDatabases } from "@/lib/data"
+import type { ProcessInfo } from "@/lib/data"
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState("table")
-  const [selectedDatabase, setSelectedDatabase] = useState(databases[0].name)
-  const [selectedTable, setSelectedTable] = useState("users")
-  const [selectedProcedure, setSelectedProcedure] = useState("get_user_by_email")
-  const [selectedProcess, setSelectedProcess] = useState("User Management Dashboard")
+  const [selectedDatabase, setSelectedDatabase] = useState(initialDatabases[0].name)
+  const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const [selectedProcedure, setSelectedProcedure] = useState<string | null>(null)
+  const [selectedProcess, setSelectedProcess] = useState<string | null>(null)
   const [selectedSchema, setSelectedSchema] = useState("public")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [schemaOpen, setSchemaOpen] = useState(true)
+  const [processSidebarOpen, setProcessSidebarOpen] = useState(true)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [databases, setDatabases] = useState(initialDatabases)
 
   const currentDatabase = useMemo(
     () => databases.find((db) => db.name === selectedDatabase),
-    [selectedDatabase],
+    [databases, selectedDatabase],
   )
 
   const currentTable = useMemo(() => {
-    if (!currentDatabase) return null
+    if (!currentDatabase || !selectedTable) return null
     const schema = currentDatabase.schemas.find(
       (s) => s.name === selectedSchema,
     )
@@ -32,7 +42,7 @@ export default function Page() {
   }, [currentDatabase, selectedSchema, selectedTable])
 
   const currentProcedure = useMemo(() => {
-    if (!currentDatabase) return null
+    if (!currentDatabase || !selectedProcedure) return null
     const schema = currentDatabase.schemas.find(
       (s) => s.name === selectedSchema,
     )
@@ -43,53 +53,41 @@ export default function Page() {
   }, [currentDatabase, selectedSchema, selectedProcedure])
 
   const currentProcess = useMemo(() => {
-    if (!currentDatabase) return null
-    const schema = currentDatabase.schemas.find(
-      (s) => s.name === selectedSchema,
-    )
-    return (
-      schema?.processes.find((p) => p.name === selectedProcess) ?? null
-    )
-  }, [currentDatabase, selectedSchema, selectedProcess])
+    if (!currentDatabase || !selectedProcess) return null
+    for (const schema of currentDatabase.schemas) {
+      const found = schema.processes.find((p) => p.name === selectedProcess)
+      if (found) return found
+    }
+    return null
+  }, [currentDatabase, selectedProcess])
 
   const handleSelectDatabase = useCallback(
     (name: string) => {
       setSelectedDatabase(name)
+      setSelectedTable(null)
+      setSelectedProcedure(null)
+      setSelectedProcess(null)
       const db = databases.find((d) => d.name === name)
       if (db && db.schemas.length > 0) {
-        const schema = db.schemas[0]
-        setSelectedSchema(schema.name)
-        if (schema.tables.length > 0) {
-          setSelectedTable(schema.tables[0].name)
-        }
-        if (schema.storedProcedures.length > 0) {
-          setSelectedProcedure(schema.storedProcedures[0].name)
-        }
-        if (schema.processes.length > 0) {
-          setSelectedProcess(schema.processes[0].name)
-        }
+        setSelectedSchema(db.schemas[0].name)
       }
     },
-    [],
+    [databases],
   )
 
   const handleTabChange = useCallback(
     (tab: string) => {
       setActiveTab(tab)
-      if (!currentDatabase) return
-      const schema = currentDatabase.schemas.find(
-        (s) => s.name === selectedSchema,
-      )
-      if (!schema) return
-      if (tab === "stored-procedures" && schema.storedProcedures.length > 0) {
-        setSelectedProcedure(schema.storedProcedures[0].name)
-      } else if (tab === "table" && schema.tables.length > 0) {
-        setSelectedTable(schema.tables[0].name)
-      } else if (tab === "process" && schema.processes.length > 0) {
-        setSelectedProcess(schema.processes[0].name)
+      // Clear selections when switching tabs so empty state shows
+      if (tab === "table") {
+        setSelectedTable(null)
+      } else if (tab === "stored-procedures") {
+        setSelectedProcedure(null)
+      } else if (tab === "process") {
+        setSelectedProcess(null)
       }
     },
-    [currentDatabase, selectedSchema],
+    [],
   )
 
   const handleSelectItem = useCallback(
@@ -106,6 +104,55 @@ export default function Page() {
     [activeTab],
   )
 
+  const handleSelectProcess = useCallback(
+    (schemaName: string, processName: string) => {
+      setSelectedSchema(schemaName)
+      setSelectedProcess(processName)
+    },
+    [],
+  )
+
+  const handleCreateProcess = useCallback(
+    (data: CreateProcessData) => {
+      const newProcess: ProcessInfo = {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        trigger: data.trigger,
+        contact: data.contact,
+        lastUpdated: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        updatedBy: "You",
+        dataPopulation: data.dataPopulation,
+        databasesUsed: data.databasesUsed,
+        documents: data.documents,
+        issues: [],
+      }
+      setDatabases((prev) =>
+        prev.map((db) =>
+          db.name === selectedDatabase
+            ? {
+                ...db,
+                schemas: db.schemas.map((s) =>
+                  s.name === selectedSchema
+                    ? { ...s, processes: [...s.processes, newProcess] }
+                    : s,
+                ),
+              }
+            : db,
+        ),
+      )
+      setSelectedProcess(data.name)
+      setCreateModalOpen(false)
+    },
+    [selectedDatabase, selectedSchema],
+  )
+
   const selectedItem =
     activeTab === "stored-procedures"
       ? selectedProcedure
@@ -113,48 +160,96 @@ export default function Page() {
         ? selectedProcess
         : selectedTable
 
+  const isProcessTab = activeTab === "process"
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <TopNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <TopNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        sidebarOpen={isProcessTab ? processSidebarOpen : sidebarOpen}
+        onToggleSidebar={() =>
+          isProcessTab
+            ? setProcessSidebarOpen((v) => !v)
+            : setSidebarOpen((v) => !v)
+        }
+        schemaOpen={schemaOpen}
+        onToggleSchema={() => setSchemaOpen((v) => !v)}
+        hideSchemaToggle={isProcessTab}
+      />
       <div className="flex flex-1 overflow-hidden">
-        <DatabaseSidebar
-          databases={databases}
-          selectedDatabase={selectedDatabase}
-          onSelectDatabase={handleSelectDatabase}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-        {currentDatabase && (
-          <SchemaPanel
-            schemas={currentDatabase.schemas}
-            selectedItem={selectedItem}
-            activeTab={activeTab}
-            onSelectItem={handleSelectItem}
-          />
-        )}
-        {activeTab === "table" && currentTable && currentDatabase && (
-          <TableDetail
-            table={currentTable}
-            databaseName={currentDatabase.name}
-          />
-        )}
-        {activeTab === "stored-procedures" &&
-          currentProcedure &&
-          currentDatabase && (
-            <StoredProcedureDetail
-              procedure={currentProcedure}
-              databaseName={currentDatabase.name}
+        {isProcessTab ? (
+          <>
+            {/* Process tab: single sidebar */}
+            {currentDatabase && (
+              <ProcessSidebar
+                schemas={currentDatabase.schemas}
+                selectedProcess={selectedProcess}
+                onSelectProcess={handleSelectProcess}
+                collapsed={!processSidebarOpen}
+                onToggle={() => setProcessSidebarOpen((v) => !v)}
+                onCreateProcess={() => setCreateModalOpen(true)}
+              />
+            )}
+            {currentProcess && currentDatabase ? (
+              <ProcessDetail
+                process={currentProcess}
+                databaseName={currentDatabase.name}
+                onCreateProcess={() => setCreateModalOpen(true)}
+              />
+            ) : (
+              <EmptyState activeTab="process" />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Table and Stored Procedures: two-panel sidebar */}
+            <DatabaseSidebar
+              databases={databases}
+              selectedDatabase={selectedDatabase}
+              onSelectDatabase={handleSelectDatabase}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              collapsed={!sidebarOpen}
+              onToggle={() => setSidebarOpen((v) => !v)}
             />
-          )}
-        {activeTab === "process" &&
-          currentProcess &&
-          currentDatabase && (
-            <ProcessDetail
-              process={currentProcess}
-              databaseName={currentDatabase.name}
-            />
-          )}
+            {currentDatabase && (
+              <SchemaPanel
+                schemas={currentDatabase.schemas}
+                selectedItem={selectedItem ?? ""}
+                activeTab={activeTab}
+                onSelectItem={handleSelectItem}
+                collapsed={!schemaOpen}
+                onToggle={() => setSchemaOpen((v) => !v)}
+              />
+            )}
+            {activeTab === "table" ? (
+              currentTable && currentDatabase ? (
+                <TableDetail
+                  table={currentTable}
+                  databaseName={currentDatabase.name}
+                />
+              ) : (
+                <EmptyState activeTab="table" />
+              )
+            ) : activeTab === "stored-procedures" ? (
+              currentProcedure && currentDatabase ? (
+                <StoredProcedureDetail
+                  procedure={currentProcedure}
+                  databaseName={currentDatabase.name}
+                />
+              ) : (
+                <EmptyState activeTab="stored-procedures" />
+              )
+            ) : null}
+          </>
+        )}
       </div>
+      <CreateProcessModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleCreateProcess}
+      />
     </div>
   )
 }
