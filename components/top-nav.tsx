@@ -25,6 +25,7 @@ interface TopNavProps {
   onToggleSidebar: () => void
   schemaOpen: boolean
   onToggleSchema: () => void
+  hideSchemaToggle?: boolean
 }
 
 export function TopNav({
@@ -34,6 +35,7 @@ export function TopNav({
   onToggleSidebar,
   schemaOpen,
   onToggleSchema,
+  hideSchemaToggle,
 }: TopNavProps) {
   return (
     <header className="flex shrink-0 flex-col border-b border-border bg-background sm:h-14 sm:flex-row sm:items-center">
@@ -57,18 +59,20 @@ export function TopNav({
               <PanelLeft className="h-4 w-4" />
             )}
           </button>
-          <button
-            type="button"
-            onClick={onToggleSchema}
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={schemaOpen ? "Close schema panel" : "Open schema panel"}
-          >
-            {schemaOpen ? (
-              <Columns3 className="h-4 w-4" />
-            ) : (
-              <Columns2 className="h-4 w-4" />
-            )}
-          </button>
+          {!hideSchemaToggle && (
+            <button
+              type="button"
+              onClick={onToggleSchema}
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={schemaOpen ? "Close schema panel" : "Open schema panel"}
+            >
+              {schemaOpen ? (
+                <Columns3 className="h-4 w-4" />
+              ) : (
+                <Columns2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between overflow-x-auto border-t border-border sm:h-full sm:flex-1 sm:border-t-0">
@@ -106,18 +110,20 @@ export function TopNav({
               <PanelLeft className="h-4 w-4" />
             )}
           </button>
-          <button
-            type="button"
-            onClick={onToggleSchema}
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={schemaOpen ? "Close schema panel" : "Open schema panel"}
-          >
-            {schemaOpen ? (
-              <Columns3 className="h-4 w-4" />
-            ) : (
-              <Columns2 className="h-4 w-4" />
-            )}
-          </button>
+          {!hideSchemaToggle && (
+            <button
+              type="button"
+              onClick={onToggleSchema}
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={schemaOpen ? "Close schema panel" : "Open schema panel"}
+            >
+              {schemaOpen ? (
+                <Columns3 className="h-4 w-4" />
+              ) : (
+                <Columns2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
       </div>
       <div className="hidden pr-5 sm:block">
