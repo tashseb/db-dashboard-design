@@ -101,6 +101,9 @@ export function CreateProcessModal({
         database: newDb.trim(),
         table: newTable.trim(),
         usage: newUsage.trim(),
+        server: "",
+        details: "",
+        connection: "",
       },
     ])
     setNewDb("")

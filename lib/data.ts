@@ -45,7 +45,33 @@ export interface DatabaseReference {
   database: string
   table: string
   usage: string
+  server: string
+  details: string
+  connection: string
 }
+
+// Available tables for autocomplete search
+export interface AvailableTable {
+  id: string
+  name: string
+  database: string
+  server: string
+  details: string
+  connection: string
+}
+
+export const availableTables: AvailableTable[] = [
+  { id: "t1", name: "users", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Core user identity and authentication data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t2", name: "orders", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Customer order records and transaction data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t3", name: "products", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Product catalog with inventory and pricing", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t4", name: "sessions", database: "Production_Main", server: "prod-cache-01.us-east-1.elasticache.amazonaws.com", details: "User session tokens and auth state", connection: "Redis 7.0 | TLS | Port 6379" },
+  { id: "t5", name: "audit_logs", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "System-wide audit trail for compliance", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t6", name: "users", database: "Staging_Replica", server: "staging-db-01.us-west-2.rds.amazonaws.com", details: "Staging copy of user data for testing", connection: "PostgreSQL 15.2 | SSL Optional | Port 5432" },
+  { id: "t7", name: "payments", database: "Production_Main", server: "prod-db-02.us-east-1.rds.amazonaws.com", details: "Payment transactions and billing records", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t8", name: "notifications", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "User notification preferences and history", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+  { id: "t9", name: "analytics_events", database: "Analytics_DW", server: "analytics-dw.us-east-1.redshift.amazonaws.com", details: "Event stream data for analytics processing", connection: "Redshift | SSL Required | Port 5439" },
+  { id: "t10", name: "inventory", database: "Production_Main", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Real-time inventory levels and warehousing", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+]
 
 export interface DocumentFile {
   id: string
@@ -203,8 +229,8 @@ END;`,
             updatedBy: "Sarah Chen",
             dataPopulation: "Initial page load fetches the first 50 users via the get_user_by_email stored procedure with pagination parameters. Search triggers a debounced API call to /api/users/search which queries the users table with ILIKE filters. User metrics are aggregated via a materialized view refreshed every 15 minutes.",
             databasesUsed: [
-              { database: "Production_Main", table: "users", usage: "Primary read/write for all user CRUD operations" },
-              { database: "Production_Main", table: "orders", usage: "Read-only join to display order count per user" },
+              { database: "Production_Main", table: "users", usage: "Primary read/write for all user CRUD operations", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Core user identity and authentication data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+              { database: "Production_Main", table: "orders", usage: "Read-only join to display order count per user", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Customer order records and transaction data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
             ],
             documents: [
               { id: "doc-1", name: "User Management - Technical Spec.pdf", size: "2.4 MB", uploadedAt: "October 10, 2023", uploadedBy: "Sarah Chen" },
@@ -252,8 +278,8 @@ END;`,
             updatedBy: "Mike Torres",
             dataPopulation: "On page load, the authenticated user's ID is extracted from the session token. Orders are fetched via /api/orders?user_id={id} which runs a SELECT on the orders table with user_id filter, ordered by created_at DESC. Order details are lazy-loaded on expand via a separate API call joining orders with order_items.",
             databasesUsed: [
-              { database: "Production_Main", table: "orders", usage: "Primary read for order listing and filtering" },
-              { database: "Production_Main", table: "users", usage: "Read to validate user session and display user info in header" },
+              { database: "Production_Main", table: "orders", usage: "Primary read for order listing and filtering", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Customer order records and transaction data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
+              { database: "Production_Main", table: "users", usage: "Read to validate user session and display user info in header", server: "prod-db-01.us-east-1.rds.amazonaws.com", details: "Core user identity and authentication data", connection: "PostgreSQL 15.2 | SSL Required | Port 5432" },
             ],
             documents: [],
             issues: [
@@ -337,7 +363,7 @@ END;`,
             updatedBy: "Lisa Wang",
             dataPopulation: "Test configuration is loaded from a static JSON config on page mount. After a reset is triggered via the reset_staging_data procedure, test results are streamed via Server-Sent Events from /api/staging/test-stream. Historical runs are fetched from a test_runs table on initial load.",
             databasesUsed: [
-              { database: "Staging_Replica", table: "users", usage: "Read/write target for data integrity tests after reset" },
+              { database: "Staging_Replica", table: "users", usage: "Read/write target for data integrity tests after reset", server: "staging-db-01.us-west-2.rds.amazonaws.com", details: "Staging copy of user data for testing", connection: "PostgreSQL 15.2 | SSL Optional | Port 5432" },
             ],
             documents: [
               { id: "doc-4", name: "QA Test Plan - Staging.pdf", size: "1.2 MB", uploadedAt: "October 12, 2023", uploadedBy: "Lisa Wang" },

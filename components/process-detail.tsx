@@ -10,10 +10,12 @@ import {
   Database,
   FileText,
   Info,
+  Link2,
   Plus,
   RotateCcw,
   Save,
   Search,
+  Server,
   Shield,
   Trash2,
   UploadCloud,
@@ -21,7 +23,8 @@ import {
   X,
 } from "lucide-react"
 import { useState, useRef, useCallback } from "react"
-import type { ProcessInfo, IssueRecord, DocumentFile } from "@/lib/data"
+import type { ProcessInfo, IssueRecord, DocumentFile, DatabaseReference } from "@/lib/data"
+import { TableAutocomplete } from "./table-autocomplete"
 
 interface ProcessDetailProps {
   process: ProcessInfo
@@ -282,6 +285,24 @@ function DocumentDropZone({
 // --- Main component ---
 
 export function ProcessDetail({ process, databaseName, onCreateProcess }: ProcessDetailProps) {
+  const [tables, setTables] = useState<DatabaseReference[]>(process.databasesUsed)
+
+  const handleAddTable = useCallback((table: DatabaseReference) => {
+    setTables((prev) => [...prev, table])
+  }, [])
+
+  const handleRemoveTable = useCallback((database: string, tableName: string) => {
+    setTables((prev) => prev.filter((t) => !(t.database === database && t.table === tableName)))
+  }, [])
+
+  const handleUpdateUsage = useCallback((database: string, tableName: string, usage: string) => {
+    setTables((prev) =>
+      prev.map((t) =>
+        t.database === database && t.table === tableName ? { ...t, usage } : t
+      )
+    )
+  }, [])
+
   const openCount = process.issues.filter(
     (i) => i.status !== "resolved",
   ).length
@@ -435,44 +456,91 @@ export function ProcessDetail({ process, databaseName, onCreateProcess }: Proces
         <label className="mb-3 block text-sm font-medium text-foreground">
           Databases & Tables Used
         </label>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[520px]">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Database
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Table
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Usage
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {process.databasesUsed.map((ref) => (
-                <tr
-                  key={`${ref.database}-${ref.table}`}
-                  className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/20"
-                >
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                      <Database className="h-3.5 w-3.5 text-primary" />
-                      {ref.database}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-muted-foreground">
-                    {ref.table}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    {ref.usage}
-                  </td>
+
+        {/* Autocomplete search */}
+        <TableAutocomplete existingTables={tables} onAddTable={handleAddTable} />
+
+        {/* Table list */}
+        {tables.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    Server
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    Database
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    Table
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    Details
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    Connection
+                  </th>
+                  <th className="w-10 px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {tables.map((ref) => (
+                  <tr
+                    key={`${ref.database}-${ref.table}`}
+                    className="group border-b border-border last:border-b-0 transition-colors hover:bg-muted/20"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Server className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[140px]" title={ref.server}>
+                          {ref.server}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Database className="h-3.5 w-3.5 text-primary shrink-0" />
+                        {ref.database}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-mono text-muted-foreground">
+                      {ref.table}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px]">
+                      <span className="truncate block" title={ref.details}>
+                        {ref.details}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        <Link2 className="h-3 w-3" />
+                        {ref.connection.split("|")[0].trim()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTable(ref.database, ref.table)}
+                        className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                        aria-label={`Remove ${ref.table}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
+            <Database className="mb-3 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              No tables added yet. Search above to add tables.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Documentation */}
