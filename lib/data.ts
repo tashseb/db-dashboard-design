@@ -77,9 +77,26 @@ export interface DocumentFile {
   id: string
   name: string
   size: string
+  sizeBytes: number
+  type: string
   uploadedAt: string
   uploadedBy: string
+  previewUrl?: string
 }
+
+// Global documents repository
+export const globalDocuments: DocumentFile[] = [
+  { id: "gdoc-1", name: "User Management - Technical Spec.pdf", size: "2.4 MB", sizeBytes: 2516582, type: "pdf", uploadedAt: "October 10, 2023", uploadedBy: "Sarah Chen", previewUrl: "https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.jpg" },
+  { id: "gdoc-2", name: "Admin Dashboard Wireframes.fig", size: "8.1 MB", sizeBytes: 8493465, type: "fig", uploadedAt: "September 28, 2023", uploadedBy: "Alex Rivera" },
+  { id: "gdoc-3", name: "User CRUD API Documentation.md", size: "48 KB", sizeBytes: 49152, type: "md", uploadedAt: "October 15, 2023", uploadedBy: "James Park" },
+  { id: "gdoc-4", name: "QA Test Plan - Staging.pdf", size: "1.2 MB", sizeBytes: 1258291, type: "pdf", uploadedAt: "October 12, 2023", uploadedBy: "Lisa Wang", previewUrl: "https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.jpg" },
+  { id: "gdoc-5", name: "Database Schema Diagram.png", size: "856 KB", sizeBytes: 876544, type: "png", uploadedAt: "October 5, 2023", uploadedBy: "Mike Torres", previewUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop" },
+  { id: "gdoc-6", name: "API Endpoints Reference.docx", size: "124 KB", sizeBytes: 126976, type: "docx", uploadedAt: "October 18, 2023", uploadedBy: "Sarah Chen" },
+  { id: "gdoc-7", name: "Performance Benchmarks.xlsx", size: "2.1 MB", sizeBytes: 2202009, type: "xlsx", uploadedAt: "October 20, 2023", uploadedBy: "James Park" },
+  { id: "gdoc-8", name: "Architecture Overview.pptx", size: "4.5 MB", sizeBytes: 4718592, type: "pptx", uploadedAt: "September 15, 2023", uploadedBy: "Alex Rivera" },
+  { id: "gdoc-9", name: "Security Audit Report.pdf", size: "3.2 MB", sizeBytes: 3355443, type: "pdf", uploadedAt: "October 22, 2023", uploadedBy: "Lisa Wang", previewUrl: "https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.jpg" },
+  { id: "gdoc-10", name: "Deployment Guide.md", size: "32 KB", sizeBytes: 32768, type: "md", uploadedAt: "October 8, 2023", uploadedBy: "Mike Torres" },
+]
 
 export interface ProcessInfo {
   name: string

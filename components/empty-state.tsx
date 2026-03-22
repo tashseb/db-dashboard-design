@@ -1,6 +1,6 @@
 "use client"
 
-import { Database, Workflow, Zap, Table2, MousePointerClick } from "lucide-react"
+import { Database, FileText, Workflow, Zap, Table2, MousePointerClick } from "lucide-react"
 
 interface EmptyStateProps {
   activeTab: string
@@ -27,6 +27,12 @@ const TAB_CONFIG: Record<
     title: "No Process Selected",
     description:
       "Select a process from the sidebar or create a new one to document your page workflows, databases used, and issues.",
+  },
+  documents: {
+    icon: FileText,
+    title: "No Documents Yet",
+    description:
+      "Upload documentation files to share specs, wireframes, API docs, and other project resources with your team.",
   },
 }
 
