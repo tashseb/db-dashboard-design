@@ -1,13 +1,16 @@
 "use client"
 
+import { useState, useCallback } from "react"
 import {
   Calendar,
   Clock,
   Code2,
   Database,
+  Languages,
   Play,
   RotateCcw,
   Save,
+  X,
 } from "lucide-react"
 import type { StoredProcedureInfo } from "@/lib/data"
 
@@ -16,10 +19,45 @@ interface StoredProcedureDetailProps {
   databaseName: string
 }
 
+// Mock translation function (in real app, this would call a translation API)
+function translateToJapanese(text: string): string {
+  // Simulated translations for demo
+  const translations: Record<string, string> = {
+    "Retrieves a user record by their email address with optional activity filtering":
+      "オプションのアクティビティフィルタリングを使用して、メールアドレスでユーザーレコードを取得します",
+    "Creates a new order for a user with validation and returns the generated order ID":
+      "ユーザーの新しい注文をバリデーション付きで作成し、生成された注文IDを返します",
+    "Moves orders older than the specified number of days to the archive table":
+      "指定された日数より古い注文をアーカイブテーブルに移動します",
+    "Resets all staging tables to a clean test state by truncating and reseeding":
+      "すべてのステージングテーブルを切り捨てて再シードすることで、クリーンなテスト状態にリセットします",
+  }
+  return translations[text] || `[日本語翻訳] ${text}`
+}
+
 export function StoredProcedureDetail({
   procedure,
   databaseName,
 }: StoredProcedureDetailProps) {
+  const [description, setDescription] = useState(procedure.description)
+  const [translationDialogOpen, setTranslationDialogOpen] = useState(false)
+  const [translatedText, setTranslatedText] = useState("")
+  const [isTranslating, setIsTranslating] = useState(false)
+
+  const handleOpenTranslation = useCallback(() => {
+    setIsTranslating(true)
+    setTranslationDialogOpen(true)
+    // Simulate API delay
+    setTimeout(() => {
+      setTranslatedText(translateToJapanese(description))
+      setIsTranslating(false)
+    }, 500)
+  }, [description])
+
+  const handleApplyTranslation = useCallback(() => {
+    setDescription(translatedText)
+    setTranslationDialogOpen(false)
+  }, [translatedText])
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="border-b border-border px-4 py-5 sm:px-6 lg:px-8">
@@ -102,11 +140,22 @@ export function StoredProcedureDetail({
         </div>
 
         <div className="mt-6">
-          <label className="mb-2 block text-sm font-medium text-foreground">
-            Description
-          </label>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">
+              Description
+            </label>
+            <button
+              type="button"
+              onClick={handleOpenTranslation}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Languages className="h-3.5 w-3.5" />
+              Translate
+            </button>
+          </div>
           <textarea
-            defaultValue={procedure.description}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             rows={2}
             className="w-full resize-none rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
@@ -201,6 +250,92 @@ export function StoredProcedureDetail({
           </pre>
         </div>
       </div>
+
+      {/* Translation Dialog */}
+      {translationDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => setTranslationDialogOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setTranslationDialogOpen(false)}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                  <Languages className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Translate Description
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Japanese Translation
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTranslationDialogOpen(false)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Original Text
+                </label>
+                <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-foreground">
+                  {description}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Japanese Translation
+                </label>
+                {isTranslating ? (
+                  <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 px-4 py-6">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Translating...
+                    </div>
+                  </div>
+                ) : (
+                  <textarea
+                    value={translatedText}
+                    onChange={(e) => setTranslatedText(e.target.value)}
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="Translation will appear here..."
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setTranslationDialogOpen(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyTranslation}
+                disabled={isTranslating || !translatedText}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Overwrite Description
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
