@@ -12,6 +12,7 @@ import {
   FileText,
   FileType,
   HardDrive,
+  Link2,
   Search,
   Trash2,
   UploadCloud,
@@ -48,9 +49,18 @@ function getFileColor(type: string) {
   return "text-muted-foreground"
 }
 
+// Source file extensions that can produce PDFs
+const PDF_SOURCE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "fig", "ai", "psd", "indd"]
+
 interface UploadError {
   fileName: string
   reason: string
+}
+
+interface PendingUpload {
+  file: File
+  name: string
+  sourceFile?: File
 }
 
 interface DocumentsDetailProps {
@@ -64,8 +74,15 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
   const [viewingDoc, setViewingDoc] = useState<DocumentFile | null>(null)
   const [uploadErrors, setUploadErrors] = useState<UploadError[]>([])
+  
+  // Upload dialog state
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null)
+  const [uploadStep, setUploadStep] = useState<"dropzone" | "details">("dropzone")
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const sourceFileInputRef = useRef<HTMLInputElement>(null)
 
   // Filter documents by search
   const filteredDocs = documents.filter((doc) =>
@@ -101,44 +118,87 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }, [])
 
-  // Handle file upload
-  const handleFiles = useCallback((files: FileList | null) => {
-    if (!files) return
+  // Handle file selection in dialog
+  const handleFileSelect = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return
 
-    const newErrors: UploadError[] = []
-    const newDocs: DocumentFile[] = []
-
-    Array.from(files).forEach((file) => {
-      const validation = validateFile(file)
-      if (!validation.valid) {
-        newErrors.push({ fileName: file.name, reason: validation.reason ?? "Unknown error" })
-      } else {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-        const isImage = ["png", "jpg", "jpeg", "gif"].includes(ext)
-        newDocs.push({
-          id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          name: file.name,
-          size: formatSize(file.size),
-          sizeBytes: file.size,
-          type: ext,
-          uploadedAt: new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          uploadedBy: "You",
-          previewUrl: isImage ? URL.createObjectURL(file) : undefined,
-        })
-      }
-    })
-
-    if (newErrors.length > 0) {
-      setUploadErrors(newErrors)
+    const file = files[0]
+    const validation = validateFile(file)
+    
+    if (!validation.valid) {
+      setUploadErrors([{ fileName: file.name, reason: validation.reason ?? "Unknown error" }])
+      return
     }
-    if (newDocs.length > 0) {
-      setDocuments((prev) => [...newDocs, ...prev])
+
+    // Move to details step
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
+    setPendingUpload({ file, name: nameWithoutExt })
+    setUploadStep("details")
+  }, [validateFile])
+
+  // Handle source file selection for PDFs
+  const handleSourceFileSelect = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0 || !pendingUpload) return
+
+    const file = files[0]
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+    
+    if (!PDF_SOURCE_EXTENSIONS.includes(ext)) {
+      setUploadErrors([{ 
+        fileName: file.name, 
+        reason: `Source file must be one of: ${PDF_SOURCE_EXTENSIONS.join(", ")}` 
+      }])
+      return
     }
-  }, [validateFile, formatSize])
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadErrors([{ 
+        fileName: file.name, 
+        reason: `File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the ${MAX_FILE_SIZE_MB} MB limit` 
+      }])
+      return
+    }
+
+    setPendingUpload({ ...pendingUpload, sourceFile: file })
+  }, [pendingUpload])
+
+  // Complete the upload
+  const handleCompleteUpload = useCallback(() => {
+    if (!pendingUpload) return
+
+    const ext = pendingUpload.file.name.split(".").pop()?.toLowerCase() ?? ""
+    const isImage = ["png", "jpg", "jpeg", "gif"].includes(ext)
+    
+    const newDoc: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      name: `${pendingUpload.name}.${ext}`,
+      size: formatSize(pendingUpload.file.size),
+      sizeBytes: pendingUpload.file.size,
+      type: ext,
+      uploadedAt: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      uploadedBy: "You",
+      previewUrl: isImage ? URL.createObjectURL(pendingUpload.file) : undefined,
+    }
+
+    setDocuments((prev) => [newDoc, ...prev])
+    
+    // Reset dialog state
+    setPendingUpload(null)
+    setUploadStep("dropzone")
+    setUploadDialogOpen(false)
+  }, [pendingUpload, formatSize])
+
+  // Cancel upload
+  const handleCancelUpload = useCallback(() => {
+    setPendingUpload(null)
+    setUploadStep("dropzone")
+    setUploadDialogOpen(false)
+    setUploadErrors([])
+  }, [])
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -154,8 +214,8 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    handleFiles(e.dataTransfer.files)
-  }, [handleFiles])
+    handleFileSelect(e.dataTransfer.files)
+  }, [handleFileSelect])
 
   // Handle mouse move for preview positioning
   const handleMouseMove = useCallback((e: React.MouseEvent, doc: DocumentFile) => {
@@ -172,6 +232,8 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   const dismissError = useCallback((index: number) => {
     setUploadErrors((prev) => prev.filter((_, i) => i !== index))
   }, [])
+
+  const isPdfUpload = pendingUpload?.file.name.toLowerCase().endsWith(".pdf")
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
@@ -196,94 +258,17 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
           </div>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setUploadDialogOpen(true)}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <UploadCloud className="h-4 w-4" />
             <span className="hidden sm:inline">Upload</span>
           </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(",")}
-            onChange={(e) => handleFiles(e.target.files)}
-            className="hidden"
-          />
         </div>
       </div>
 
-      {/* Error notifications */}
-      {uploadErrors.length > 0 && (
-        <div className="border-b border-border bg-destructive/5 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-2">
-            {uploadErrors.map((err, i) => (
-              <div
-                key={`${err.fileName}-${i}`}
-                className="flex items-start justify-between gap-3 rounded-md border border-destructive/20 bg-background px-3 py-2"
-              >
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  <div>
-                    <p className="text-sm font-medium text-destructive">{err.fileName}</p>
-                    <p className="text-xs text-muted-foreground">{err.reason}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => dismissError(i)}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Main content */}
       <div className="flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Upload drop zone */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`mb-6 rounded-xl border-2 border-dashed transition-colors ${
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-border bg-muted/30 hover:border-muted-foreground/30"
-          }`}
-        >
-          <div className="flex flex-col items-center justify-center px-6 py-10">
-            <div
-              className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl transition-colors ${
-                isDragging ? "bg-primary/10" : "bg-muted"
-              }`}
-            >
-              <UploadCloud
-                className={`h-7 w-7 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
-              />
-            </div>
-            <p className="mb-1 text-sm font-medium text-foreground">
-              {isDragging ? "Drop files here" : "Drag and drop files here"}
-            </p>
-            <p className="mb-4 text-xs text-muted-foreground">
-              or click the upload button above
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <HardDrive className="h-3 w-3" />
-                Max {MAX_FILE_SIZE_MB} MB
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <FileText className="h-3 w-3" />
-                PDF, Word, Excel, Images, Figma
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* Documents list */}
         {filteredDocs.length > 0 ? (
           <div className="overflow-hidden rounded-xl border border-border">
@@ -390,6 +375,14 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
             <p className="mt-1 text-xs text-muted-foreground">
               Upload your first document to get started
             </p>
+            <button
+              type="button"
+              onClick={() => setUploadDialogOpen(true)}
+              className="mt-4 flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <UploadCloud className="h-4 w-4" />
+              Upload Document
+            </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
@@ -424,6 +417,263 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
           )}
           <div className="border-t border-border bg-muted/50 px-3 py-2">
             <p className="truncate text-xs font-medium text-foreground">{hoveredDoc.name}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Dialog */}
+      {uploadDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={handleCancelUpload}
+            onKeyDown={(e) => e.key === "Escape" && handleCancelUpload()}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-border bg-background shadow-2xl">
+            {/* Dialog header */}
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <UploadCloud className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {uploadStep === "dropzone" ? "Upload Document" : "Document Details"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {uploadStep === "dropzone" 
+                      ? "Select a file to upload" 
+                      : "Review and confirm upload"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelUpload}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dialog content */}
+            <div className="px-6 py-5">
+              {/* Error notifications */}
+              {uploadErrors.length > 0 && (
+                <div className="mb-4 flex flex-col gap-2">
+                  {uploadErrors.map((err, i) => (
+                    <div
+                      key={`${err.fileName}-${i}`}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                        <div>
+                          <p className="text-sm font-medium text-destructive">{err.fileName}</p>
+                          <p className="text-xs text-muted-foreground">{err.reason}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => dismissError(i)}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {uploadStep === "dropzone" ? (
+                <>
+                  {/* Dropzone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-muted/30 hover:border-muted-foreground/50"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center justify-center px-6 py-12">
+                      <div
+                        className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl transition-colors ${
+                          isDragging ? "bg-primary/10" : "bg-muted"
+                        }`}
+                      >
+                        <UploadCloud
+                          className={`h-7 w-7 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
+                        />
+                      </div>
+                      <p className="mb-1 text-sm font-medium text-foreground">
+                        {isDragging ? "Drop file here" : "Drag and drop a file here"}
+                      </p>
+                      <p className="mb-4 text-xs text-muted-foreground">
+                        or click to browse
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                          <HardDrive className="h-3 w-3" />
+                          Max {MAX_FILE_SIZE_MB} MB
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                          <FileText className="h-3 w-3" />
+                          PDF, Word, Excel, Images
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                    onChange={(e) => handleFileSelect(e.target.files)}
+                    className="hidden"
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Selected file preview */}
+                  {pendingUpload && (
+                    <div className="mb-5 flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                      {(() => {
+                        const ext = pendingUpload.file.name.split(".").pop()?.toLowerCase() ?? ""
+                        const Icon = getFileIcon(ext)
+                        const iconColor = getFileColor(ext)
+                        return (
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                        )
+                      })()}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {pendingUpload.file.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatSize(pendingUpload.file.size)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingUpload(null)
+                          setUploadStep("dropzone")
+                        }}
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Name field */}
+                  <div className="mb-5">
+                    <label className="mb-2 block text-sm font-medium text-foreground">
+                      Document Name
+                    </label>
+                    <input
+                      type="text"
+                      value={pendingUpload?.name ?? ""}
+                      onChange={(e) => pendingUpload && setPendingUpload({ ...pendingUpload, name: e.target.value })}
+                      placeholder="Enter document name"
+                      className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      The file extension will be added automatically
+                    </p>
+                  </div>
+
+                  {/* Source file upload for PDFs */}
+                  {isPdfUpload && (
+                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+                      <div className="mb-3 flex items-start gap-2">
+                        <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Attach Source File (Optional)
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Upload the original file this PDF was created from (Word, PowerPoint, Excel, Figma, etc.)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {pendingUpload?.sourceFile ? (
+                        <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                          {(() => {
+                            const ext = pendingUpload.sourceFile.name.split(".").pop()?.toLowerCase() ?? ""
+                            const Icon = getFileIcon(ext)
+                            const iconColor = getFileColor(ext)
+                            return (
+                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted ${iconColor}`}>
+                                <Icon className="h-4 w-4" />
+                              </div>
+                            )
+                          })()}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {pendingUpload.sourceFile.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatSize(pendingUpload.sourceFile.size)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPendingUpload({ ...pendingUpload, sourceFile: undefined })}
+                            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => sourceFileInputRef.current?.click()}
+                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <UploadCloud className="h-4 w-4" />
+                          Select Source File
+                        </button>
+                      )}
+                      <input
+                        ref={sourceFileInputRef}
+                        type="file"
+                        accept={PDF_SOURCE_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                        onChange={(e) => handleSourceFileSelect(e.target.files)}
+                        className="hidden"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Dialog footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <button
+                type="button"
+                onClick={handleCancelUpload}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Cancel
+              </button>
+              {uploadStep === "details" && (
+                <button
+                  type="button"
+                  onClick={handleCompleteUpload}
+                  disabled={!pendingUpload?.name.trim()}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Upload Document
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
