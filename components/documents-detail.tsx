@@ -13,13 +13,14 @@ import {
   FileType,
   HardDrive,
   Link2,
+  Pencil,
   Search,
   Trash2,
   UploadCloud,
   User,
   X,
 } from "lucide-react"
-import type { DocumentFile } from "@/lib/data"
+import type { DocumentFile, SourceFileInfo } from "@/lib/data"
 
 // Constants
 const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "png", "jpg", "jpeg", "gif", "fig"]
@@ -63,6 +64,14 @@ interface PendingUpload {
   sourceFile?: File
 }
 
+interface EditingDocument {
+  doc: DocumentFile
+  name: string
+  newFile?: File
+  newSourceFile?: File
+  removeSourceFile?: boolean
+}
+
 interface DocumentsDetailProps {
   initialDocuments?: DocumentFile[]
 }
@@ -73,6 +82,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   const [hoveredDoc, setHoveredDoc] = useState<DocumentFile | null>(null)
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
   const [viewingDoc, setViewingDoc] = useState<DocumentFile | null>(null)
+  const [viewingSourceOf, setViewingSourceOf] = useState<DocumentFile | null>(null)
   const [uploadErrors, setUploadErrors] = useState<UploadError[]>([])
   
   // Upload dialog state
@@ -80,9 +90,14 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   const [isDragging, setIsDragging] = useState(false)
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null)
   const [uploadStep, setUploadStep] = useState<"dropzone" | "details">("dropzone")
+
+  // Edit dialog state
+  const [editingDocument, setEditingDocument] = useState<EditingDocument | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const sourceFileInputRef = useRef<HTMLInputElement>(null)
+  const editFileInputRef = useRef<HTMLInputElement>(null)
+  const editSourceFileInputRef = useRef<HTMLInputElement>(null)
 
   // Filter documents by search
   const filteredDocs = documents.filter((doc) =>
@@ -169,6 +184,17 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
     const ext = pendingUpload.file.name.split(".").pop()?.toLowerCase() ?? ""
     const isImage = ["png", "jpg", "jpeg", "gif"].includes(ext)
     
+    let sourceFileInfo: SourceFileInfo | undefined
+    if (pendingUpload.sourceFile) {
+      const srcExt = pendingUpload.sourceFile.name.split(".").pop()?.toLowerCase() ?? ""
+      sourceFileInfo = {
+        name: pendingUpload.sourceFile.name,
+        size: formatSize(pendingUpload.sourceFile.size),
+        sizeBytes: pendingUpload.sourceFile.size,
+        type: srcExt,
+      }
+    }
+
     const newDoc: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       name: `${pendingUpload.name}.${ext}`,
@@ -182,6 +208,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
       }),
       uploadedBy: "You",
       previewUrl: isImage ? URL.createObjectURL(pendingUpload.file) : undefined,
+      sourceFile: sourceFileInfo,
     }
 
     setDocuments((prev) => [newDoc, ...prev])
@@ -197,6 +224,99 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
     setPendingUpload(null)
     setUploadStep("dropzone")
     setUploadDialogOpen(false)
+    setUploadErrors([])
+  }, [])
+
+  // Open edit dialog
+  const handleOpenEdit = useCallback((doc: DocumentFile) => {
+    const nameWithoutExt = doc.name.replace(/\.[^/.]+$/, "")
+    setEditingDocument({ doc, name: nameWithoutExt })
+  }, [])
+
+  // Handle edit file change
+  const handleEditFileSelect = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0 || !editingDocument) return
+
+    const file = files[0]
+    const validation = validateFile(file)
+    
+    if (!validation.valid) {
+      setUploadErrors([{ fileName: file.name, reason: validation.reason ?? "Unknown error" }])
+      return
+    }
+
+    setEditingDocument({ ...editingDocument, newFile: file })
+  }, [editingDocument, validateFile])
+
+  // Handle edit source file change
+  const handleEditSourceFileSelect = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0 || !editingDocument) return
+
+    const file = files[0]
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+    
+    if (!PDF_SOURCE_EXTENSIONS.includes(ext)) {
+      setUploadErrors([{ 
+        fileName: file.name, 
+        reason: `Source file must be one of: ${PDF_SOURCE_EXTENSIONS.join(", ")}` 
+      }])
+      return
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadErrors([{ 
+        fileName: file.name, 
+        reason: `File size exceeds the ${MAX_FILE_SIZE_MB} MB limit` 
+      }])
+      return
+    }
+
+    setEditingDocument({ ...editingDocument, newSourceFile: file, removeSourceFile: false })
+  }, [editingDocument])
+
+  // Save edit
+  const handleSaveEdit = useCallback(() => {
+    if (!editingDocument) return
+
+    setDocuments((prev) =>
+      prev.map((d) => {
+        if (d.id !== editingDocument.doc.id) return d
+
+        const ext = editingDocument.newFile 
+          ? editingDocument.newFile.name.split(".").pop()?.toLowerCase() ?? d.type
+          : d.type
+
+        let sourceFile = d.sourceFile
+        if (editingDocument.removeSourceFile) {
+          sourceFile = undefined
+        } else if (editingDocument.newSourceFile) {
+          const srcExt = editingDocument.newSourceFile.name.split(".").pop()?.toLowerCase() ?? ""
+          sourceFile = {
+            name: editingDocument.newSourceFile.name,
+            size: formatSize(editingDocument.newSourceFile.size),
+            sizeBytes: editingDocument.newSourceFile.size,
+            type: srcExt,
+          }
+        }
+
+        return {
+          ...d,
+          name: `${editingDocument.name}.${ext}`,
+          type: ext,
+          size: editingDocument.newFile ? formatSize(editingDocument.newFile.size) : d.size,
+          sizeBytes: editingDocument.newFile ? editingDocument.newFile.size : d.sizeBytes,
+          sourceFile,
+        }
+      })
+    )
+
+    setEditingDocument(null)
+    setUploadErrors([])
+  }, [editingDocument, formatSize])
+
+  // Cancel edit
+  const handleCancelEdit = useCallback(() => {
+    setEditingDocument(null)
     setUploadErrors([])
   }, [])
 
@@ -234,6 +354,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
   }, [])
 
   const isPdfUpload = pendingUpload?.file.name.toLowerCase().endsWith(".pdf")
+  const isEditingPdf = editingDocument?.doc.type === "pdf" || editingDocument?.newFile?.name.toLowerCase().endsWith(".pdf")
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
@@ -296,6 +417,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                 {filteredDocs.map((doc) => {
                   const Icon = getFileIcon(doc.type)
                   const iconColor = getFileColor(doc.type)
+                  const hasSourceFile = !!doc.sourceFile
                   return (
                     <tr
                       key={doc.id}
@@ -305,18 +427,37 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}
-                          >
-                            <Icon className="h-4.5 w-4.5" />
+                          <div className="relative">
+                            <div
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}
+                            >
+                              <Icon className="h-4.5 w-4.5" />
+                            </div>
+                            {/* Source file indicator */}
+                            {hasSourceFile && (
+                              <div 
+                                className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                                title="Has source file attached"
+                              >
+                                <Link2 className="h-2.5 w-2.5" />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-foreground">
                               {doc.name}
                             </p>
-                            <p className="text-xs text-muted-foreground uppercase sm:hidden">
-                              {doc.type} · {doc.size}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground uppercase sm:hidden">
+                                {doc.type} · {doc.size}
+                              </p>
+                              {hasSourceFile && (
+                                <span className="hidden text-xs text-primary sm:inline-flex sm:items-center sm:gap-1">
+                                  <Link2 className="h-3 w-3" />
+                                  {doc.sourceFile?.type.toUpperCase()} source
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -337,6 +478,19 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Source file actions */}
+                          {hasSourceFile && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setViewingSourceOf(doc)}
+                                className="rounded-md p-2 text-primary opacity-0 transition-all hover:bg-primary/10 group-hover:opacity-100"
+                                title="View source file"
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
                             onClick={() => setViewingDoc(doc)}
@@ -344,6 +498,14 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                             title="Preview"
                           >
                             <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(doc)}
+                            className="rounded-md p-2 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
@@ -574,7 +736,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                   {/* Name field */}
                   <div className="mb-5">
                     <label className="mb-2 block text-sm font-medium text-foreground">
-                      Document Name
+                      Display Name
                     </label>
                     <input
                       type="text"
@@ -598,7 +760,7 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                             Attach Source File (Optional)
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Upload the original file this PDF was created from (Word, PowerPoint, Excel, Figma, etc.)
+                            Upload the original file this PDF was created from
                           </p>
                         </div>
                       </div>
@@ -673,6 +835,294 @@ export function DocumentsDetail({ initialDocuments = [] }: DocumentsDetailProps)
                   Upload Document
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      {editingDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={handleCancelEdit}
+            onKeyDown={(e) => e.key === "Escape" && handleCancelEdit()}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-border bg-background shadow-2xl">
+            {/* Dialog header */}
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Pencil className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Edit Document</h3>
+                  <p className="text-sm text-muted-foreground">Update document details</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dialog content */}
+            <div className="px-6 py-5">
+              {/* Error notifications */}
+              {uploadErrors.length > 0 && (
+                <div className="mb-4 flex flex-col gap-2">
+                  {uploadErrors.map((err, i) => (
+                    <div
+                      key={`${err.fileName}-${i}`}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                        <div>
+                          <p className="text-sm font-medium text-destructive">{err.fileName}</p>
+                          <p className="text-xs text-muted-foreground">{err.reason}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => dismissError(i)}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Display Name */}
+              <div className="mb-5">
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={editingDocument.name}
+                  onChange={(e) => setEditingDocument({ ...editingDocument, name: e.target.value })}
+                  placeholder="Enter document name"
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+
+              {/* Current/New File */}
+              <div className="mb-5">
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Document File
+                </label>
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                  {(() => {
+                    const ext = editingDocument.newFile 
+                      ? editingDocument.newFile.name.split(".").pop()?.toLowerCase() ?? ""
+                      : editingDocument.doc.type
+                    const Icon = getFileIcon(ext)
+                    const iconColor = getFileColor(ext)
+                    return (
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    )
+                  })()}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {editingDocument.newFile ? editingDocument.newFile.name : editingDocument.doc.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {editingDocument.newFile 
+                        ? `New file · ${formatSize(editingDocument.newFile.size)}`
+                        : `Current · ${editingDocument.doc.size}`
+                      }
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => editFileInputRef.current?.click()}
+                    className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                  >
+                    Replace
+                  </button>
+                </div>
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept={ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                  onChange={(e) => handleEditFileSelect(e.target.files)}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Source File (for PDFs) */}
+              {isEditingPdf && (
+                <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+                  <div className="mb-3 flex items-start gap-2">
+                    <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Source File
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        The original file this PDF was created from
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {(editingDocument.doc.sourceFile && !editingDocument.removeSourceFile) || editingDocument.newSourceFile ? (
+                    <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                      {(() => {
+                        const srcFile = editingDocument.newSourceFile || editingDocument.doc.sourceFile
+                        const ext = editingDocument.newSourceFile 
+                          ? editingDocument.newSourceFile.name.split(".").pop()?.toLowerCase() ?? ""
+                          : srcFile?.type ?? ""
+                        const Icon = getFileIcon(ext)
+                        const iconColor = getFileColor(ext)
+                        return (
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted ${iconColor}`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                        )
+                      })()}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {editingDocument.newSourceFile 
+                            ? editingDocument.newSourceFile.name 
+                            : editingDocument.doc.sourceFile?.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {editingDocument.newSourceFile 
+                            ? `New · ${formatSize(editingDocument.newSourceFile.size)}`
+                            : `Current · ${editingDocument.doc.sourceFile?.size}`
+                          }
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => editSourceFileInputRef.current?.click()}
+                        className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingDocument({ 
+                          ...editingDocument, 
+                          newSourceFile: undefined, 
+                          removeSourceFile: true 
+                        })}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => editSourceFileInputRef.current?.click()}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                    >
+                      <UploadCloud className="h-4 w-4" />
+                      {editingDocument.removeSourceFile ? "Re-attach Source File" : "Attach Source File"}
+                    </button>
+                  )}
+                  <input
+                    ref={editSourceFileInputRef}
+                    type="file"
+                    accept={PDF_SOURCE_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                    onChange={(e) => handleEditSourceFileSelect(e.target.files)}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Dialog footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!editingDocument.name.trim()}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Source File Viewer Modal */}
+      {viewingSourceOf && viewingSourceOf.sourceFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Link2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Source File</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Original file for {viewingSourceOf.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingSourceOf(null)}
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-4">
+                {(() => {
+                  const Icon = getFileIcon(viewingSourceOf.sourceFile.type)
+                  const iconColor = getFileColor(viewingSourceOf.sourceFile.type)
+                  return (
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}>
+                      <Icon className="h-6 w-6" />
+                    </div>
+                  )
+                })()}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {viewingSourceOf.sourceFile.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {viewingSourceOf.sourceFile.type.toUpperCase()} · {viewingSourceOf.sourceFile.size}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </button>
+              </div>
             </div>
           </div>
         </div>
