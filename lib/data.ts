@@ -5,6 +5,59 @@ export interface Column {
   isPrimaryKey: boolean
 }
 
+// Table reference types for usage tracking
+export interface ProcessReference {
+  processName: string
+  platform: string
+  category: string
+  usageType: "read" | "write" | "read/write"
+  description: string
+  owner: string
+}
+
+export interface CodeReference {
+  name: string
+  type: "procedure" | "function" | "view" | "trigger"
+  schema: string
+  usageType: "select" | "insert" | "update" | "delete" | "join"
+  lastModified: string
+}
+
+// Mock table references data
+export const tableReferences: Record<string, { processes: ProcessReference[]; codeObjects: CodeReference[] }> = {
+  "users": {
+    processes: [
+      { processName: "User Management Dashboard", platform: "Admin Portal", category: "Admin", usageType: "read/write", description: "CRUD operations for user accounts", owner: "platform-team@company.com" },
+      { processName: "Order History Page", platform: "Customer Portal", category: "Customer", usageType: "read", description: "Validates user session and displays user info", owner: "commerce-team@company.com" },
+      { processName: "Authentication Service", platform: "API Gateway", category: "Infrastructure", usageType: "read", description: "User lookup during login/token validation", owner: "security-team@company.com" },
+      { processName: "Email Campaign Manager", platform: "Marketing Portal", category: "Marketing", usageType: "read", description: "Fetches user emails for campaign targeting", owner: "marketing-team@company.com" },
+    ],
+    codeObjects: [
+      { name: "get_user_by_email", type: "procedure", schema: "public", usageType: "select", lastModified: "October 22, 2023" },
+      { name: "create_order", type: "procedure", schema: "public", usageType: "select", lastModified: "October 24, 2023" },
+      { name: "vw_active_users", type: "view", schema: "public", usageType: "select", lastModified: "October 15, 2023" },
+      { name: "vw_user_order_summary", type: "view", schema: "reporting", usageType: "join", lastModified: "October 18, 2023" },
+      { name: "fn_get_user_display_name", type: "function", schema: "public", usageType: "select", lastModified: "October 10, 2023" },
+      { name: "trg_user_audit_log", type: "trigger", schema: "public", usageType: "insert", lastModified: "September 28, 2023" },
+    ],
+  },
+  "orders": {
+    processes: [
+      { processName: "Order History Page", platform: "Customer Portal", category: "Customer", usageType: "read", description: "Displays customer order history with filtering", owner: "commerce-team@company.com" },
+      { processName: "User Management Dashboard", platform: "Admin Portal", category: "Admin", usageType: "read", description: "Shows order count per user in admin view", owner: "platform-team@company.com" },
+      { processName: "Fulfillment Dashboard", platform: "Operations Portal", category: "Operations", usageType: "read/write", description: "Order processing and status updates", owner: "fulfillment-team@company.com" },
+      { processName: "Analytics Pipeline", platform: "Data Platform", category: "Analytics", usageType: "read", description: "ETL job for order analytics aggregation", owner: "data-team@company.com" },
+    ],
+    codeObjects: [
+      { name: "create_order", type: "procedure", schema: "public", usageType: "insert", lastModified: "October 24, 2023" },
+      { name: "archive_old_orders", type: "procedure", schema: "public", usageType: "delete", lastModified: "October 18, 2023" },
+      { name: "vw_user_order_summary", type: "view", schema: "reporting", usageType: "select", lastModified: "October 18, 2023" },
+      { name: "vw_daily_order_totals", type: "view", schema: "reporting", usageType: "select", lastModified: "October 20, 2023" },
+      { name: "fn_calculate_order_tax", type: "function", schema: "public", usageType: "select", lastModified: "October 5, 2023" },
+    ],
+  },
+}
+
 export interface TableInfo {
   name: string
   estimatedRowCount: number
