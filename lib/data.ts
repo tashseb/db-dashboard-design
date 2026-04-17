@@ -5,6 +5,62 @@ export interface Column {
   isPrimaryKey: boolean
 }
 
+// Vault credential types
+export interface DatabaseCredential {
+  id: string
+  name: string
+  host: string
+  port: string
+  database: string
+  username: string
+  password: string
+  type: "PostgreSQL" | "MySQL" | "SQL Server" | "Oracle" | "MongoDB"
+  environment: "Production" | "Staging" | "Development"
+}
+
+export interface ServerCredential {
+  id: string
+  name: string
+  host: string
+  port: string
+  username: string
+  password: string
+  type: "SSH" | "FTP" | "SFTP" | "RDP"
+  environment: "Production" | "Staging" | "Development"
+}
+
+export interface ContactInfo {
+  id: string
+  name: string
+  role: string
+  email: string
+  phone?: string
+  team: string
+}
+
+// Mock vault data
+export const vaultCredentials = {
+  databases: [
+    { id: "db-1", name: "Production Main DB", host: "prod-db-01.us-east-1.rds.amazonaws.com", port: "5432", database: "production_main", username: "prod_admin", password: "pr0d_S3cur3_P@ss!", type: "PostgreSQL", environment: "Production" },
+    { id: "db-2", name: "Staging Replica", host: "staging-db-01.us-west-2.rds.amazonaws.com", port: "5432", database: "staging_replica", username: "staging_user", password: "st@g1ng_T3st_P@ss", type: "PostgreSQL", environment: "Staging" },
+    { id: "db-3", name: "Analytics DW", host: "analytics-dw.us-east-1.redshift.amazonaws.com", port: "5439", database: "analytics_dw", username: "analytics_ro", password: "An@lyt1cs_R3@d0nly!", type: "PostgreSQL", environment: "Production" },
+    { id: "db-4", name: "Dev Local", host: "localhost", port: "5432", database: "dev_local", username: "dev_user", password: "d3v_l0c@l_p@ss", type: "PostgreSQL", environment: "Development" },
+  ] as DatabaseCredential[],
+  servers: [
+    { id: "srv-1", name: "Production App Server", host: "prod-app-01.us-east-1.ec2.amazonaws.com", port: "22", username: "deploy_user", password: "D3pl0y_SSH_K3y!", type: "SSH", environment: "Production" },
+    { id: "srv-2", name: "Staging App Server", host: "staging-app-01.us-west-2.ec2.amazonaws.com", port: "22", username: "staging_deploy", password: "St@g1ng_SSH!", type: "SSH", environment: "Staging" },
+    { id: "srv-3", name: "File Server", host: "files.internal.company.com", port: "22", username: "sftp_user", password: "SFTP_S3cur3_Tr@nsf3r", type: "SFTP", environment: "Production" },
+    { id: "srv-4", name: "Windows Jump Box", host: "jumpbox.internal.company.com", port: "3389", username: "admin_user", password: "W1nd0ws_Jump_@cc3ss", type: "RDP", environment: "Production" },
+  ] as ServerCredential[],
+  contacts: [
+    { id: "ct-1", name: "Sarah Chen", role: "Platform Lead", email: "sarah.chen@company.com", phone: "+1 (555) 123-4567", team: "Platform Team" },
+    { id: "ct-2", name: "Mike Torres", role: "Senior DBA", email: "mike.torres@company.com", phone: "+1 (555) 234-5678", team: "Database Team" },
+    { id: "ct-3", name: "Lisa Wang", role: "Security Engineer", email: "lisa.wang@company.com", phone: "+1 (555) 345-6789", team: "Security Team" },
+    { id: "ct-4", name: "James Park", role: "DevOps Lead", email: "james.park@company.com", phone: "+1 (555) 456-7890", team: "Infrastructure Team" },
+    { id: "ct-5", name: "Alex Rivera", role: "Backend Engineer", email: "alex.rivera@company.com", team: "Commerce Team" },
+  ] as ContactInfo[],
+}
+
 // Table reference types for usage tracking
 export interface ProcessReference {
   processName: string
