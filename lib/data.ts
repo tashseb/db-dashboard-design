@@ -5,6 +5,57 @@ export interface Column {
   isPrimaryKey: boolean
 }
 
+// Cron job types
+export interface CronJob {
+  id: string
+  name: string
+  schedule: string
+  description: string
+  status: "active" | "paused" | "error"
+  lastRun: string
+  nextRun: string
+  duration: string
+  command: string
+  server: string
+  owner: string
+  successRate: number
+}
+
+export interface ProjectLog {
+  id: string
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  source: string
+  message: string
+  details?: string
+}
+
+// Mock cron jobs
+export const cronJobs: CronJob[] = [
+  { id: "cron-1", name: "Database Backup", schedule: "0 2 * * *", description: "Full database backup to S3 with encryption", status: "active", lastRun: "Today at 2:00 AM", nextRun: "Tomorrow at 2:00 AM", duration: "12m 34s", command: "/scripts/backup-db.sh --full --encrypt", server: "prod-db-01", owner: "Mike Torres", successRate: 99.8 },
+  { id: "cron-2", name: "Analytics ETL", schedule: "0 */4 * * *", description: "Extract, transform, and load data to analytics warehouse", status: "active", lastRun: "Today at 8:00 AM", nextRun: "Today at 12:00 PM", duration: "45m 12s", command: "python /etl/analytics_pipeline.py", server: "etl-worker-01", owner: "James Park", successRate: 97.5 },
+  { id: "cron-3", name: "Cache Warm-up", schedule: "*/15 * * * *", description: "Pre-warm Redis cache with frequently accessed data", status: "active", lastRun: "10 minutes ago", nextRun: "In 5 minutes", duration: "2m 15s", command: "/scripts/warm-cache.sh", server: "cache-01", owner: "Alex Rivera", successRate: 100 },
+  { id: "cron-4", name: "Log Rotation", schedule: "0 0 * * 0", description: "Rotate and archive application logs weekly", status: "active", lastRun: "Last Sunday at 12:00 AM", nextRun: "Sunday at 12:00 AM", duration: "5m 22s", command: "logrotate /etc/logrotate.d/app", server: "all-servers", owner: "Lisa Wang", successRate: 100 },
+  { id: "cron-5", name: "Stale Session Cleanup", schedule: "0 3 * * *", description: "Remove expired user sessions from database", status: "paused", lastRun: "3 days ago", nextRun: "Paused", duration: "1m 45s", command: "node /scripts/cleanup-sessions.js", server: "app-01", owner: "Sarah Chen", successRate: 98.2 },
+  { id: "cron-6", name: "Health Check Monitor", schedule: "*/5 * * * *", description: "Check all service endpoints and report status", status: "active", lastRun: "2 minutes ago", nextRun: "In 3 minutes", duration: "30s", command: "/scripts/health-check.sh --all", server: "monitor-01", owner: "James Park", successRate: 99.9 },
+  { id: "cron-7", name: "Report Generation", schedule: "0 6 * * 1", description: "Generate weekly performance and usage reports", status: "error", lastRun: "Last Monday at 6:00 AM (Failed)", nextRun: "Monday at 6:00 AM", duration: "N/A", command: "python /reports/weekly_report.py", server: "report-worker", owner: "Lisa Wang", successRate: 85.0 },
+  { id: "cron-8", name: "SSL Cert Check", schedule: "0 9 * * *", description: "Monitor SSL certificate expiration dates", status: "active", lastRun: "Today at 9:00 AM", nextRun: "Tomorrow at 9:00 AM", duration: "45s", command: "/scripts/check-ssl.sh --notify", server: "monitor-01", owner: "Mike Torres", successRate: 100 },
+]
+
+// Mock project logs
+export const projectLogs: ProjectLog[] = [
+  { id: "log-1", timestamp: "2023-10-26 11:45:32", level: "info", source: "api-gateway", message: "Successfully processed 1,234 requests in the last hour", details: "Average response time: 45ms, Error rate: 0.02%" },
+  { id: "log-2", timestamp: "2023-10-26 11:42:15", level: "warn", source: "database", message: "High connection pool usage detected (85%)", details: "Current connections: 85/100. Consider scaling or optimizing queries." },
+  { id: "log-3", timestamp: "2023-10-26 11:38:44", level: "error", source: "payment-service", message: "Stripe webhook verification failed", details: "Signature mismatch for event evt_1234. Retrying in 30 seconds." },
+  { id: "log-4", timestamp: "2023-10-26 11:35:21", level: "info", source: "deployment", message: "Production deployment completed successfully", details: "Version v2.4.1 deployed to 4 instances. Rolling restart completed." },
+  { id: "log-5", timestamp: "2023-10-26 11:30:00", level: "debug", source: "cache", message: "Cache hit ratio: 94.5% over last 15 minutes", details: "Redis memory usage: 2.1GB / 4GB" },
+  { id: "log-6", timestamp: "2023-10-26 11:25:18", level: "info", source: "auth-service", message: "JWT token rotation completed", details: "Old tokens will be valid for 24 more hours." },
+  { id: "log-7", timestamp: "2023-10-26 11:20:05", level: "warn", source: "storage", message: "S3 bucket approaching storage limit (78%)", details: "Current usage: 780GB / 1TB. Archive old files recommended." },
+  { id: "log-8", timestamp: "2023-10-26 11:15:33", level: "error", source: "email-service", message: "SMTP connection timeout to mail server", details: "Failed to connect to smtp.company.com:587. Queuing 23 emails." },
+  { id: "log-9", timestamp: "2023-10-26 11:10:12", level: "info", source: "scheduler", message: "Cron job 'Database Backup' completed successfully", details: "Backup size: 4.2GB, Duration: 12m 34s" },
+  { id: "log-10", timestamp: "2023-10-26 11:05:00", level: "debug", source: "monitoring", message: "System health check passed all endpoints", details: "All 12 services responding within SLA thresholds." },
+]
+
 // Vault credential types
 export interface DatabaseCredential {
   id: string

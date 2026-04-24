@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import {
   Check,
+  Clock,
   Copy,
   Database,
   FileText,
@@ -27,6 +28,7 @@ const tabs = [
   { label: "Stored Procedures", icon: FolderCode, id: "stored-procedures" },
   { label: "Process", icon: Workflow, id: "process" },
   { label: "Documents", icon: FileText, id: "documents" },
+  { label: "Operations", icon: Clock, id: "operations" },
 ] as const
 
 const vaultTabs = [

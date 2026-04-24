@@ -10,6 +10,7 @@ import { StoredProcedureDetail } from "@/components/stored-procedure-detail"
 import { ProcessDetail } from "@/components/process-detail"
 import { EmptyState } from "@/components/empty-state"
 import { DocumentsDetail } from "@/components/documents-detail"
+import { OperationsDetail } from "@/components/operations-detail"
 import { CreateProcessModal } from "@/components/create-process-modal"
 import type { CreateProcessData } from "@/components/create-process-modal"
 import { databases as initialDatabases, globalDocuments } from "@/lib/data"
@@ -163,6 +164,7 @@ export default function Page() {
 
   const isProcessTab = activeTab === "process"
   const isDocumentsTab = activeTab === "documents"
+  const isOperationsTab = activeTab === "operations"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -177,10 +179,12 @@ export default function Page() {
         }
         schemaOpen={schemaOpen}
         onToggleSchema={() => setSchemaOpen((v) => !v)}
-        hideSchemaToggle={isProcessTab || isDocumentsTab}
+        hideSchemaToggle={isProcessTab || isDocumentsTab || isOperationsTab}
       />
       <div className="flex flex-1 overflow-hidden">
-        {isDocumentsTab ? (
+        {isOperationsTab ? (
+          <OperationsDetail />
+        ) : isDocumentsTab ? (
           <DocumentsDetail initialDocuments={globalDocuments} />
         ) : isProcessTab ? (
           <>
