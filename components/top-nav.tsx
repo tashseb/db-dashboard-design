@@ -16,6 +16,7 @@ import {
   Pencil,
   Plus,
   Server,
+  Shield,
   Trash2,
   Users,
   Workflow,
@@ -29,6 +30,7 @@ const tabs = [
   { label: "Process", icon: Workflow, id: "process" },
   { label: "Documents", icon: FileText, id: "documents" },
   { label: "Operations", icon: Clock, id: "operations" },
+  { label: "User Access", icon: Shield, id: "user-access" },
 ] as const
 
 const vaultTabs = [

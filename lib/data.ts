@@ -5,6 +5,73 @@ export interface Column {
   isPrimaryKey: boolean
 }
 
+// User Access types
+export interface PageAccess {
+  id: string
+  name: string
+  path: string
+  category: string
+}
+
+export interface SystemUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  team: string
+  accessLevel: string
+  pages: string[]
+}
+
+export interface AccessRequest {
+  id: string
+  requesterId: string
+  requesterName: string
+  requesterEmail: string
+  requestType: "single" | "multiple" | "clone"
+  pages: string[]
+  cloneUserId?: string
+  cloneUserName?: string
+  status: "pending" | "approved" | "declined"
+  requestedAt: string
+  reviewedAt?: string
+  reviewedBy?: string
+  notes?: string
+}
+
+// Mock pages for access
+export const availablePages: PageAccess[] = [
+  { id: "page-1", name: "User Management Dashboard", path: "/admin/users", category: "Admin" },
+  { id: "page-2", name: "Order History Page", path: "/orders/history", category: "Customer" },
+  { id: "page-3", name: "Analytics Dashboard", path: "/analytics", category: "Analytics" },
+  { id: "page-4", name: "Payment Settings", path: "/settings/payments", category: "Settings" },
+  { id: "page-5", name: "Database Explorer", path: "/admin/database", category: "Admin" },
+  { id: "page-6", name: "Report Generator", path: "/reports/generate", category: "Reports" },
+  { id: "page-7", name: "Audit Logs", path: "/admin/audit", category: "Admin" },
+  { id: "page-8", name: "API Keys Management", path: "/settings/api-keys", category: "Settings" },
+  { id: "page-9", name: "Billing Dashboard", path: "/billing", category: "Finance" },
+  { id: "page-10", name: "Team Management", path: "/admin/teams", category: "Admin" },
+]
+
+// Mock system users
+export const systemUsers: SystemUser[] = [
+  { id: "user-1", name: "Sarah Chen", email: "sarah.chen@company.com", role: "Platform Lead", team: "Platform Team", accessLevel: "Admin", pages: ["page-1", "page-2", "page-3", "page-4", "page-5", "page-6", "page-7", "page-8", "page-9", "page-10"] },
+  { id: "user-2", name: "Mike Torres", email: "mike.torres@company.com", role: "Senior DBA", team: "Database Team", accessLevel: "Developer", pages: ["page-5", "page-6", "page-7"] },
+  { id: "user-3", name: "Lisa Wang", email: "lisa.wang@company.com", role: "Security Engineer", team: "Security Team", accessLevel: "Security", pages: ["page-7", "page-8"] },
+  { id: "user-4", name: "James Park", email: "james.park@company.com", role: "DevOps Lead", team: "Infrastructure Team", accessLevel: "Developer", pages: ["page-3", "page-5", "page-6"] },
+  { id: "user-5", name: "Alex Rivera", email: "alex.rivera@company.com", role: "Backend Engineer", team: "Commerce Team", accessLevel: "Developer", pages: ["page-2", "page-3"] },
+  { id: "user-6", name: "Emily Johnson", email: "emily.johnson@company.com", role: "Product Manager", team: "Product Team", accessLevel: "Viewer", pages: ["page-3", "page-6"] },
+]
+
+// Mock access requests
+export const accessRequests: AccessRequest[] = [
+  { id: "req-1", requesterId: "user-5", requesterName: "Alex Rivera", requesterEmail: "alex.rivera@company.com", requestType: "single", pages: ["page-5"], status: "pending", requestedAt: "October 26, 2023 at 10:30 AM", notes: "Need access to Database Explorer for debugging production issues" },
+  { id: "req-2", requesterId: "user-6", requesterName: "Emily Johnson", requesterEmail: "emily.johnson@company.com", requestType: "multiple", pages: ["page-1", "page-9"], status: "pending", requestedAt: "October 26, 2023 at 9:15 AM", notes: "Require access to User Management and Billing for quarterly review" },
+  { id: "req-3", requesterId: "user-5", requesterName: "Alex Rivera", requesterEmail: "alex.rivera@company.com", requestType: "clone", pages: ["page-5", "page-6", "page-7"], cloneUserId: "user-2", cloneUserName: "Mike Torres", status: "pending", requestedAt: "October 25, 2023 at 4:45 PM", notes: "Requesting same access as Mike Torres for database work" },
+  { id: "req-4", requesterId: "user-4", requesterName: "James Park", requesterEmail: "james.park@company.com", requestType: "single", pages: ["page-8"], status: "approved", requestedAt: "October 24, 2023 at 2:00 PM", reviewedAt: "October 24, 2023 at 3:30 PM", reviewedBy: "Sarah Chen" },
+  { id: "req-5", requesterId: "user-6", requesterName: "Emily Johnson", requesterEmail: "emily.johnson@company.com", requestType: "single", pages: ["page-7"], status: "declined", requestedAt: "October 23, 2023 at 11:00 AM", reviewedAt: "October 23, 2023 at 2:15 PM", reviewedBy: "Lisa Wang", notes: "Audit logs access requires security clearance" },
+]
+
 // Cron job types
 export interface CronJob {
   id: string
