@@ -46,6 +46,7 @@ export function UserAccessDetail() {
   // Admin request on behalf state
   const [adminRequestOpen, setAdminRequestOpen] = useState(false)
   const [adminSelectedUser, setAdminSelectedUser] = useState<string>("")
+  const [adminSubTab, setAdminSubTab] = useState<"approver" | "requests">("approver")
 
   // Detail dialog
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -384,115 +385,226 @@ export function UserAccessDetail() {
 
   // Admin View
   const renderAdminView = () => (
-    <div className="flex flex-1 flex-col overflow-hidden p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Admin - Access Management</h2>
-          <p className="text-sm text-muted-foreground">View all requests and create requests for users</p>
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Admin Sub-tabs */}
+      <div className="border-b border-border bg-muted/20 px-6">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setAdminSubTab("approver")}
+            className={`relative px-4 py-3 text-sm font-medium transition-colors ${
+              adminSubTab === "approver"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Approver List
+            {adminSubTab === "approver" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminSubTab("requests")}
+            className={`relative px-4 py-3 text-sm font-medium transition-colors ${
+              adminSubTab === "requests"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            User Requests
+            {adminSubTab === "requests" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setAdminRequestOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Request for User
-        </button>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-      </div>
+      {adminSubTab === "approver" ? (
+        <div className="flex flex-1 flex-col overflow-hidden p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-foreground">Pending Approvals</h2>
+            <p className="text-sm text-muted-foreground">Review and approve access requests</p>
+          </div>
 
-      {/* All Requests table */}
-      <div className="flex-1 overflow-auto">
-        <div className="rounded-lg border border-border">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Requester</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Pages</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Requested</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Reviewed By</th>
-                <th className="w-32 px-4 py-3 text-left text-sm font-medium text-muted-foreground">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRequests.map((request) => (
-                <tr
-                  key={request.id}
-                  className="group border-b border-border last:border-b-0 transition-colors hover:bg-muted/20"
-                >
-                  <td
-                    className="cursor-pointer px-4 py-3"
-                    onClick={() => {
-                      setSelectedRequest(request)
-                      setDetailDialogOpen(true)
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{request.requesterName}</div>
-                        <div className="text-xs text-muted-foreground">{request.requesterEmail}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-foreground capitalize">{request.requestType}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-foreground">
-                      {request.requestType === "clone"
-                        ? `Clone ${request.cloneUserName}`
-                        : `${request.pages.length} page${request.pages.length > 1 ? "s" : ""}`}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{request.requestedAt}</td>
-                  <td className="px-4 py-3">{renderStatusBadge(request.status)}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{request.reviewedBy || "-"}</td>
-                  <td className="px-4 py-3">
-                    {request.status === "pending" ? (
-                      <div className="relative">
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleStatusChange(request.id, e.target.value as "approved" | "declined")
-                            }
-                          }}
-                          className="w-full appearance-none rounded-md border border-border bg-background px-3 py-1.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                        >
-                          <option value="">Select...</option>
-                          <option value="approved">Approve</option>
-                          <option value="declined">Decline</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Reviewed</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Search */}
+          <div className="mb-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+
+          {/* All Requests table */}
+          <div className="flex-1 overflow-auto">
+            <div className="rounded-lg border border-border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Requester</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Type</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Pages</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Requested</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Reviewed By</th>
+                    <th className="w-32 px-4 py-3 text-left text-sm font-medium text-muted-foreground">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.map((request) => (
+                    <tr
+                      key={request.id}
+                      className="group border-b border-border last:border-b-0 transition-colors hover:bg-muted/20"
+                    >
+                      <td
+                        className="cursor-pointer px-4 py-3"
+                        onClick={() => {
+                          setSelectedRequest(request)
+                          setDetailDialogOpen(true)
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-foreground">{request.requesterName}</div>
+                            <div className="text-xs text-muted-foreground">{request.requesterEmail}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-foreground capitalize">{request.requestType}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-foreground">
+                          {request.requestType === "clone"
+                            ? `Clone ${request.cloneUserName}`
+                            : `${request.pages.length} page${request.pages.length > 1 ? "s" : ""}`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{request.requestedAt}</td>
+                      <td className="px-4 py-3">{renderStatusBadge(request.status)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{request.reviewedBy || "-"}</td>
+                      <td className="px-4 py-3">
+                        {request.status === "pending" ? (
+                          <div className="relative">
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleStatusChange(request.id, e.target.value as "approved" | "declined")
+                                }
+                              }}
+                              className="w-full appearance-none rounded-md border border-border bg-background px-3 py-1.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            >
+                              <option value="">Select...</option>
+                              <option value="approved">Approve</option>
+                              <option value="declined">Decline</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Reviewed</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 flex-col overflow-hidden p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Create User Request</h2>
+              <p className="text-sm text-muted-foreground">Request access on behalf of users</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdminRequestOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Request for User
+            </button>
+          </div>
+
+          {/* Admin-created requests */}
+          <div className="flex-1 overflow-auto">
+            <div className="rounded-lg border border-border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">User</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Type</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Pages</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Created</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests
+                    .filter((r) => r.notes?.includes("Requested by Admin"))
+                    .map((request) => (
+                      <tr
+                        key={request.id}
+                        className="cursor-pointer border-b border-border last:border-b-0 transition-colors hover:bg-muted/20"
+                        onClick={() => {
+                          setSelectedRequest(request)
+                          setDetailDialogOpen(true)
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-foreground">{request.requesterName}</div>
+                              <div className="text-xs text-muted-foreground">{request.requesterEmail}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-foreground capitalize">{request.requestType}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-foreground">
+                            {request.requestType === "clone"
+                              ? `Clone ${request.cloneUserName}`
+                              : `${request.pages.length} page${request.pages.length > 1 ? "s" : ""}`}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{request.requestedAt}</td>
+                        <td className="px-4 py-3">{renderStatusBadge(request.status)}</td>
+                      </tr>
+                    ))}
+                  {filteredRequests.filter((r) => r.notes?.includes("Requested by Admin")).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center">
+                        <div className="flex flex-col items-center text-muted-foreground">
+                          <Users className="mb-3 h-8 w-8 opacity-40" />
+                          <p className="text-sm">No admin-created requests yet</p>
+                          <p className="text-xs">Click &quot;Request for User&quot; to create one</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
