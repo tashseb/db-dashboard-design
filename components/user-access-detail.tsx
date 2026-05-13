@@ -9,6 +9,7 @@ import {
   Clock,
   Copy,
   Lock,
+  Mail,
   Plus,
   Search,
   Shield,
@@ -52,6 +53,18 @@ export function UserAccessDetail() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<AccessRequest | null>(null)
 
+  // Email preview state
+  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false)
+  const [emailData, setEmailData] = useState<{
+    type: "approval" | "request_created"
+    recipient: string
+    recipientEmail: string
+    subject: string
+    pages: string[]
+    requestType: string
+    cloneUserName?: string
+  } | null>(null)
+
   // Filter and sort requests
   const filteredRequests = useMemo(() => {
     let filtered = requests.filter(
@@ -67,6 +80,8 @@ export function UserAccessDetail() {
   }, [requests, searchQuery])
 
   const handleStatusChange = useCallback((requestId: string, newStatus: "approved" | "declined") => {
+    const request = requests.find((r) => r.id === requestId)
+    
     setRequests((prev) =>
       prev.map((r) =>
         r.id === requestId
@@ -85,7 +100,21 @@ export function UserAccessDetail() {
           : r
       )
     )
-  }, [])
+
+    // Trigger email notification for approvals
+    if (newStatus === "approved" && request) {
+      setEmailData({
+        type: "approval",
+        recipient: request.requesterName,
+        recipientEmail: request.requesterEmail,
+        subject: "Your Access Request Has Been Approved",
+        pages: request.pages,
+        requestType: request.requestType,
+        cloneUserName: request.cloneUserName,
+      })
+      setEmailPreviewOpen(true)
+    }
+  }, [requests])
 
   const handleSubmitRequest = useCallback(() => {
     const newRequest: AccessRequest = {
@@ -123,19 +152,20 @@ export function UserAccessDetail() {
     const targetUser = systemUsers.find((u) => u.id === adminSelectedUser)
     if (!targetUser) return
 
+    const cloneUser = selectedCloneUser ? systemUsers.find((u) => u.id === selectedCloneUser) : null
+    const requestPages = requestType === "clone" && cloneUser
+      ? cloneUser.pages
+      : selectedPages
+
     const newRequest: AccessRequest = {
       id: `req-${Date.now()}`,
       requesterId: targetUser.id,
       requesterName: targetUser.name,
       requesterEmail: targetUser.email,
       requestType,
-      pages: requestType === "clone" && selectedCloneUser
-        ? systemUsers.find((u) => u.id === selectedCloneUser)?.pages || []
-        : selectedPages,
+      pages: requestPages,
       cloneUserId: requestType === "clone" ? selectedCloneUser : undefined,
-      cloneUserName: requestType === "clone"
-        ? systemUsers.find((u) => u.id === selectedCloneUser)?.name
-        : undefined,
+      cloneUserName: requestType === "clone" ? cloneUser?.name : undefined,
       status: "pending",
       requestedAt: new Date().toLocaleString("en-US", {
         month: "long",
@@ -147,6 +177,19 @@ export function UserAccessDetail() {
       notes: `Requested by Admin on behalf of ${targetUser.name}. ${requestNotes}`,
     }
     setRequests((prev) => [newRequest, ...prev])
+    
+    // Trigger email notification for admin-created request
+    setEmailData({
+      type: "request_created",
+      recipient: targetUser.name,
+      recipientEmail: targetUser.email,
+      subject: "Access Request Created on Your Behalf",
+      pages: requestPages,
+      requestType,
+      cloneUserName: cloneUser?.name,
+    })
+    setEmailPreviewOpen(true)
+
     setAdminRequestOpen(false)
     setAdminSelectedUser("")
     setSelectedPages([])
@@ -1176,6 +1219,142 @@ export function UserAccessDetail() {
                   Close
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Preview Dialog */}
+      {emailPreviewOpen && emailData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => setEmailPreviewOpen(false)}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-2xl rounded-xl border border-border bg-background shadow-2xl">
+            {/* Email Header */}
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Email Notification Sent</h3>
+                  <p className="text-sm text-muted-foreground">Preview of the notification email</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmailPreviewOpen(false)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Email Content */}
+            <div className="p-6">
+              {/* Email Meta */}
+              <div className="mb-6 space-y-2 rounded-lg border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-16 font-medium text-muted-foreground">To:</span>
+                  <span className="text-foreground">{emailData.recipient} &lt;{emailData.recipientEmail}&gt;</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-16 font-medium text-muted-foreground">From:</span>
+                  <span className="text-foreground">Access Management &lt;access@company.com&gt;</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-16 font-medium text-muted-foreground">Subject:</span>
+                  <span className="font-medium text-foreground">{emailData.subject}</span>
+                </div>
+              </div>
+
+              {/* Email Body Preview */}
+              <div className="rounded-lg border border-border bg-white dark:bg-zinc-900">
+                {/* Email Header Banner */}
+                <div className="border-b border-border bg-primary px-6 py-8 text-center">
+                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/20">
+                    {emailData.type === "approval" ? (
+                      <CheckCircle2 className="h-8 w-8 text-white" />
+                    ) : (
+                      <Shield className="h-8 w-8 text-white" />
+                    )}
+                  </div>
+                  <h2 className="text-xl font-bold text-white">
+                    {emailData.type === "approval" ? "Access Granted" : "Access Request Created"}
+                  </h2>
+                </div>
+
+                {/* Email Body */}
+                <div className="px-6 py-6">
+                  <p className="mb-4 text-sm text-foreground">
+                    Hello <strong>{emailData.recipient}</strong>,
+                  </p>
+                  
+                  {emailData.type === "approval" ? (
+                    <p className="mb-4 text-sm text-foreground">
+                      Great news! Your access request has been approved. You now have access to the following 
+                      {emailData.requestType === "clone" 
+                        ? ` pages (cloned from ${emailData.cloneUserName}'s access)` 
+                        : " page(s)"}:
+                    </p>
+                  ) : (
+                    <p className="mb-4 text-sm text-foreground">
+                      An access request has been created on your behalf by an administrator. The following 
+                      {emailData.requestType === "clone" 
+                        ? ` pages (cloning ${emailData.cloneUserName}'s access)` 
+                        : " page(s)"} have been requested:
+                    </p>
+                  )}
+
+                  {/* Pages List */}
+                  <div className="mb-6 rounded-lg border border-border bg-muted/30 p-4">
+                    <ul className="space-y-2">
+                      {emailData.pages.map((pageId) => (
+                        <li key={pageId} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span className="text-foreground">{getPageName(pageId)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {emailData.type === "approval" ? (
+                    <p className="mb-4 text-sm text-foreground">
+                      You can now access these pages immediately. If you have any questions, please contact your administrator.
+                    </p>
+                  ) : (
+                    <p className="mb-4 text-sm text-foreground">
+                      This request is now pending approval. You will receive another notification once it has been reviewed.
+                    </p>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">
+                    Best regards,<br />
+                    <strong>Access Management Team</strong>
+                  </p>
+                </div>
+
+                {/* Email Footer */}
+                <div className="border-t border-border bg-muted/30 px-6 py-4 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    This is an automated message from the Access Management System.<br />
+                    Please do not reply to this email.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dialog Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setEmailPreviewOpen(false)}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
